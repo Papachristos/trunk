@@ -26,6 +26,7 @@ class DFNCellInfo : public FlowCellInfo
 class DFNVertexInfo : public FlowVertexInfo {
 	public:
 	//same here if needed
+	//stupid change
 };
 
 typedef TemplateFlowEngine<DFNCellInfo,DFNVertexInfo> DFNFlowEngineT;
