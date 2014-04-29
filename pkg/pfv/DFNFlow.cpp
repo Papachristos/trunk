@@ -5,8 +5,8 @@
 *  This program is free software; it is licensed under the terms of the  *
 *  GNU General Public License v2 or later. See file LICENSE for details. *
 *************************************************************************/
-	//TODO: Cubic Law on fractures
-	//TODO: Add a " CrackWidth" factor (I guess, of the same order as the permeabFactor (??) )
+	//TODO: Cubic Law on fractures (~~ l. 250 )
+	//TODO: Add a " CrackWidth" factor (I guess, of the same order as the permeabFactor (??) 
 	//TODO: Add a minimum value for the crackWidth --> Residual permeability (can be the one of the intact rock for instance) 
 	
 	
@@ -141,6 +141,10 @@ class DFNFlowEngine : public DFNFlowEngineT
 	void trickPermeability();
 	void trickPermeability (RTriangulation::Facet_circulator& facet,Real newCrackPermMultiplier);
 	void trickPermeability (RTriangulation::Finite_edges_iterator& edge,Real newCrackPermMultiplier);
+	
+	void buildTriangulation (double pZero, Solver& flow);
+	void buildTriangulation (Solver& flow);
+	
 
 	YADE_CLASS_BASE_DOC_ATTRS_INIT_CTOR_PY(DFNFlowEngine,DFNFlowEngineT,"This is an enhancement of the FlowEngine that takes into acount pre-existing discontinuities and bond breakage between particles and multiplies the local conductivity around the broken link",
 	((Real, myNewAttribute, 0,,"useless example, Input values to be implemented: newCrackPermMultiplier, jointCrackPermMultiplie, residualCrackPermMultiplier, residualJointPermMultiplier, crackOpeningFactor"))
@@ -163,7 +167,64 @@ void DFNFlowEngine::trickPermeability (RTriangulation::Facet_circulator& facet, 
 	if ( Tri.is_infinite(cell1) || Tri.is_infinite(cell2)) cerr<<"Infinite cell found in trickPermeability, should be handled somehow, maybe"<<endl;
 	cell1->info().kNorm()[facet->second] = newCrackPermMultiplier;
 	cell2->info().kNorm()[Tri.mirror_index(cell1, facet->second)] = newCrackPermMultiplier;
+	// If ( cubicLaw ) :
+	/// Cubic Law between fractured neighbouring facets
+	// crackWidth = ..
+	// crackApperture = (cracked edge.first()->info().id()-r1) - (cracked edge.second()->info().id()-r2) * ( Coefficient ) ?
+	// if (crackApperture = 0) {minCrackWidth;}
+	// Lij = cell1.info()-cell2.info()
+	// kNorm = ( crackWidth * (crackWidth)^3 / (12*viscosity) ) * ( Pi[cell1] - Pj [cell2] ) / Lij + averageVelocity/2 * crackApperture
+	/// same for mirror facet
+	// endif
 }
+
+/// Redifinition of buildTriangulation()
+// Emergency Change :P
+
+void DFNFlowEngine::buildTriangulation ( Solver& flow )
+{
+        buildTriangulation ( 0.f,flow );
+}
+void DFNFlowEngine::buildTriangulation ( double pZero, Solver& flow )
+{
+ 	if (first) flow.currentTes=0;
+        else {
+                flow.currentTes=!flow.currentTes;
+                if (debug) cout << "--------RETRIANGULATION-----------" << endl;
+        }
+	flow.resetNetwork();
+	initSolver(flow);
+
+        addBoundary ( flow );
+        triangulate ( flow );
+        if ( debug ) cout << endl << "Tesselating------" << endl << endl;
+        flow.T[flow.currentTes].compute();
+
+        flow.defineFictiousCells();
+	// For faster loops on cells define this vector
+	flow.T[flow.currentTes].cellHandles.clear();
+	flow.T[flow.currentTes].cellHandles.reserve(flow.T[flow.currentTes].Triangulation().number_of_finite_cells());
+	FiniteCellsIterator cell_end = flow.T[flow.currentTes].Triangulation().finite_cells_end();
+	int k=0;
+	for ( FiniteCellsIterator cell = flow.T[flow.currentTes].Triangulation().finite_cells_begin(); cell != cell_end; cell++ ){
+		flow.T[flow.currentTes].cellHandles.push_back(cell);
+		cell->info().id=k++;}//define unique numbering now, corresponds to position in cellHandles
+        flow.displayStatistics ();
+        flow.computePermeability();
+	//This virtual function does nothing yet, derived class may overload it to make permeability different (see DFN engine)
+	cout << " Starting trickPermeability () function from the copied function" << endl;
+	this->trickPermeability();
+	cout << " Just finished trickPermeability() function from the copied function" << endl;
+        porosity = flow.vPoralPorosity/flow.vTotalPorosity;
+
+        boundaryConditions ( flow );
+        flow.initializePressure ( pZero );
+	
+        if ( !first && !multithread && (useSolver==0 || fluidBulkModulus>0)) flow.interpolate ( flow.T[!flow.currentTes], flow.T[flow.currentTes] );
+        if ( waveAction ) flow.applySinusoidalPressure ( flow.T[flow.currentTes].Triangulation(), sineMagnitude, sineAverage, 30 );
+        if (normalLubrication || shearLubrication || viscousShear) flow.computeEdgesSurfaces();
+}
+
 
 // Circulate over the facets on which, a specific edge is an instance.
 void DFNFlowEngine::trickPermeability(RTriangulation::Finite_edges_iterator& edge, Real newCrackPermMultiplier)
@@ -189,10 +250,10 @@ void DFNFlowEngine::trickPermeability()
 //     #endif
 	
 	/// Loop logic:
- 	// Loop into edges 
-	// Find the corresponding interaction using find() function
-	//  If the interaction is cracked or injoint
-	//  Apply trickPermeability() == Circulate around the broken link and change the conductivity of all facets on which this link is an instance
+ 	/// Loop into edges 
+	/// Find the corresponding interaction using find() function
+	///  If the interaction is cracked or injoint
+	///  Apply trickPermeability() == Circulate around the broken link and change the conductivity of all facets on which this link is an instance
 	
 	cout << "Checking for cracked Edges/Interactions " << endl;
 	
@@ -214,7 +275,7 @@ void DFNFlowEngine::trickPermeability()
 #endif //DFNFLOW
 #endif //FLOWENGINE
 
-// Some instructions..
+/// Some instructions..
 	// vertex 1 of edge e is:
 	// e->first->vertex(e->second)
 	// vertex 2:
