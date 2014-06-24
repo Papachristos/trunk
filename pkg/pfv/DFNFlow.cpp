@@ -277,15 +277,15 @@ public:
 		if (isDrawable){vtkfile.write_data(cell->info().averageVelocity()[0],cell->info().averageVelocity()[1],cell->info().averageVelocity()[2]);}
 	}
 	vtkfile.end_data();}
-// 	/// Check this one, cell info()->cracked not defined yet
-// 	if(1){
-// // 	trickPermeability();
-// 	vtkfile.begin_data("fracturedCells",CELL_DATA,SCALARS,FLOAT);
-// 	for (FiniteCellsIterator cell = Tri.finite_cells_begin(); cell != Tri.finite_cells_end(); ++cell) {
-// 		bool isDrawable = cell->info().isReal() && cell->vertex(0)->info().isReal() && cell->vertex(1)->info().isReal() && cell->vertex(2)->info().isReal()  && cell->vertex(3)->info().isReal();
-// 		if (isDrawable){vtkfile.write_data(cell->info().crack);}
-// 	}
-// 	vtkfile.end_data();}
+	/// Check this one, cell info()->cracked not defined yet !! LUC !!
+	if(1){
+// 	trickPermeability();
+	vtkfile.begin_data("fracturedCells",CELL_DATA,SCALARS,FLOAT);
+	for (FiniteCellsIterator cell = Tri.finite_cells_begin(); cell != Tri.finite_cells_end(); ++cell) {
+		bool isDrawable = cell->info().isReal() && cell->vertex(0)->info().isReal() && cell->vertex(1)->info().isReal() && cell->vertex(2)->info().isReal()  && cell->vertex(3)->info().isReal();
+		if (isDrawable){vtkfile.write_data(cell->info().crack);}
+	}
+	vtkfile.end_data();}
   }
   // e.g. vtk recorders
 };
