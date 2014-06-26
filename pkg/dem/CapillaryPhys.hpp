@@ -8,6 +8,8 @@
 #pragma once
 #include<yade/pkg/dem/FrictPhys.hpp>
 
+// test
+
 class CapillaryPhys : public FrictPhys
 {
 	public :
