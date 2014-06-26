@@ -14,11 +14,11 @@
 #  ENABLE_GL2PS: enable GL2PS-option (ON by default)
 #  ENABLE_LINSOLV: enable LINSOLV-option (ON by default)
 #  ENABLE_PFVFLOW: enable PFVFLOW-option, FlowEngine (ON by default)
-<<<<<<< HEAD
+#<<<<<<< HEAD
 #  ENABLE_LBMFLOW: enable LBMFLOW-option, LBM_ENGINE (OFF by default)
-=======
+#=======
 #  ENABLE_SPH: enable SPH-option, Smoothed Particle Hydrodynamics (OFF by default, experimental)
->>>>>>> Implement experimental SPH-model
+#>>>>>>> Implement experimental SPH-model
 #  runtimePREFIX: used for packaging, when install directory is not the same is runtime directory (/usr/local by default)
 #  CHUNKSIZE: set >1, if you want several sources to be compiled at once. Increases compilation speed and RAM-consumption during it (1 by default).
 
