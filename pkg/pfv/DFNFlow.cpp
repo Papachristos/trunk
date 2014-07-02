@@ -185,51 +185,12 @@ void DFNFlowEngine::setPositionsBuffer(bool current)
   	if ( Tri.is_infinite(cell1) || Tri.is_infinite(cell2)) cerr<<"Infinite cell found in trickPermeability, should be handled somehow, maybe"<<endl;
 // 	continue; ???
 // 	cell1->info().kNorm()[facet->second] = crackPermeability;
-  	cell1->info().kNorm()[facet->second] = pow((aperture+residualAperture),3) / (12 * viscosity); /// Timos - Check If we need to add density and viscosity - 
-	if (cell1->info().kNorm()[Tri.mirror_index(cell1, facet->second)] !=8.33333e-08 ) {
-	    cout << "Permeability set to : -- " << cell1->info().kNorm()[facet->second] << endl;
-	}
+  	cell1->info().kNorm()[facet->second] = pow((aperture+residualAperture),3) / (12 * viscosity);
 //   	cell2->info().kNorm()[Tri.mirror_index(cell1, facet->second)] = crackPermeability;
 	cell2->info().kNorm()[Tri.mirror_index(cell1, facet->second)] =pow((aperture+residualAperture),3) / (12 * viscosity);
 	/// Check 
 	cell1->info().crack= 1;
 	cell2->info().crack= 1;
-// 	cout<< "Permeability changed to ...some facets ------------------------------" << endl;
-///  Cubic law:
-// 
-// 	dDem = jcfpmphys->dilation
-//   	d = do a mean value
-// 	dmax = for open fractures
-// 	dmin = for closed fractures
-// 	useCalibratedAperture = boolean
-// 	apertureThreshold = a maximum value for aperture of open fractures
-// 	
-// if facet cracked {
-// 
-///   calculation of d
-// 	if (useCalibratedAperture) {
-// 	d = dDem
-// 	}
-//   	else if (d_dem<=0){
-// 	 	d=dmin // "aperture" for closed fractures
-// 	}
-// 	else if (d_dem >= apertureThreshold) {
-//   		dmax // higher allowed aperture value for open fractures
-// 	}
-//	else {
-//   		d= do // a mean value for open fractures wiith aperture lower than apertureThreshold
-// 	}
-// 
-///   calculation of beta
-// 
-// 
-///   Caluclation of k
-//	kNorm = ((beta * d).pow(3) )/(12 * viscosity)
-// 
-///   Mass flux
-//	q = (d.pow(3)*(density*gravity))/12*viscosity *(Wij(Pi-Pj)/Lij) // Wij the width of the plates
-// }
-// 	
   }
 
 //Circulate over the facets on which, a specific edge is an instance.
@@ -240,7 +201,6 @@ void DFNFlowEngine::trickPermeability (RTriangulation::Finite_edges_iterator& ed
 	RTriangulation::Facet_circulator facet0=facet1++;
 	trickPermeability (facet0,crackPermeability, aperture,residualAperture);
 	while ( facet1!=facet0 ) {trickPermeability(facet1,crackPermeability, aperture, residualAperture); facet1++;}
-// 	cout << "circulator finished ------------------------------- " << endl;
 }
 
 
@@ -254,23 +214,17 @@ void DFNFlowEngine::trickPermeability()
 // 	#ifdef GS_OPEN_MP
 // 	pragma openmp shared(edge,..) private() schedule(static??, chunck)
 //     #endif
-	
-// 	cout << "Checking for cracked Edges/Interactions " << endl; // Debuging comment Delete afterwards 
 	const JCFpmPhys* jcfpmphys;
 	const shared_ptr<InteractionContainer> interactions = scene->interactions;
 	FiniteEdgesIterator edge = Tri.finite_edges_begin();
-	int TestOverInteractionsLooped= 0; // Debuging comment Delete afterwards 
 	for( ; edge!= Tri.finite_edges_end(); ++edge) {
 		const VertexInfo& vi1=(edge->first)->vertex(edge->second)->info();
 		const VertexInfo& vi2=(edge->first)->vertex(edge->third)->info();
 		const shared_ptr<Interaction>& interaction=interactions->find( vi1.id(),vi2.id() );
 		if (interaction && interaction->isReal()) {
 			jcfpmphys = YADE_CAST<JCFpmPhys*>(interaction->phys.get());
-			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {Real aperture=jcfpmphys->dilation; Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0; trickPermeability(edge,crackPermeability,aperture, residualAperture);}; // changed reco
-// 			cout << " permeability enhancement around edge between spheres: || " << vi1.id() << " and " << vi2.id() << endl;// Debuging comment Delete afterwards  
+			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {Real aperture=jcfpmphys->dilation; Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0; trickPermeability(edge,crackPermeability,aperture, residualAperture);};
 		}
-		TestOverInteractionsLooped +=1; // Debuging comment Delete afterwards 
-// 		cout << " number of interactions Looped up to now || " << TestOverInteractionsLooped << endl; // Debuging comment Delete afterwards  
 	}
 }
 
