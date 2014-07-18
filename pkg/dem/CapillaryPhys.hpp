@@ -10,8 +10,6 @@
 #include<yade/pkg/common/ElastMat.hpp>
 #include<yade/pkg/common/Dispatching.hpp>
 
-// test
-
 class CapillaryPhys : public FrictPhys
 {
 	public :
