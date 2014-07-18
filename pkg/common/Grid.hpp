@@ -23,7 +23,7 @@
 #pragma once
 #include "Sphere.hpp"
 #include <yade/pkg/dem/FrictPhys.hpp>
-#include <yade/pkg/dem/CohFrictPhys.hpp>
+#include <yade/pkg/dem/CohesiveFrictionalContactLaw.hpp>
 #include <yade/pkg/dem/ScGeom.hpp>
 #include <yade/core/Body.hpp>
 #include <yade/pkg/common/Dispatching.hpp>
@@ -63,7 +63,7 @@ class GridNode: public Sphere{
 		/*ctor*/
 		createIndex();,
 		/*py*/
-		.def("addConnection",&GridNode::addConnection,(python::arg("Body")),"Add a GridConnection to the GridNode.")
+		.def("addConnection",&GridNode::addConnection,(boost::python::arg("Body")),"Add a GridConnection to the GridNode.")
 	);
 	REGISTER_CLASS_INDEX(GridNode,Sphere);
 };

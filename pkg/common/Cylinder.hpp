@@ -1,3 +1,6 @@
+// 2011 © Bruno Chareyre <bruno.chareyre@hmg.inpg.fr>
+// 2012 © Kneib Francois <francois.kneib@irstea.fr>
+
 #pragma once
 #include<yade/pkg/common/Dispatching.hpp>
 #include<yade/core/Shape.hpp>
@@ -7,9 +10,7 @@
 #ifdef YADE_OPENGL
 	#include<yade/pkg/common/GLDrawFunctors.hpp>
 #endif
-#include<yade/pkg/dem/CohFrictPhys.hpp>
-#include<yade/pkg/dem/CohFrictMat.hpp>
-#include<yade/pkg/dem/Ip2_CohFrictMat_CohFrictMat_CohFrictPhys.hpp>
+#include<yade/pkg/dem/CohesiveFrictionalContactLaw.hpp>
 #include<yade/pkg/common/CylScGeom6D.hpp>
 
 class Cylinder: public Sphere{
@@ -88,7 +89,7 @@ class ChainedState: public State{
 		/*py*/
 // 		.def_readwrite("chains",&ChainedState::chains,"documentation")
 		.def_readwrite("currentChain",&ChainedState::currentChain,"Current active chain (where newly created chained bodies will be appended).")
-		.def("addToChain",&ChainedState::addToChain,(python::arg("bodyId")),"Add body to current active chain")
+		.def("addToChain",&ChainedState::addToChain,(boost::python::arg("bodyId")),"Add body to current active chain")
 	);
 	REGISTER_CLASS_INDEX(ChainedState,State);
 };

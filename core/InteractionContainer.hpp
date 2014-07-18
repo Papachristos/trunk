@@ -14,11 +14,6 @@
 #include<yade/core/Interaction.hpp>
 #include<yade/core/BodyContainer.hpp>
 
-#include<boost/foreach.hpp>
-#ifndef FOREACH
-#  define FOREACH BOOST_FOREACH
-#endif
-
 /* This InteractionContainer implementation has reference to the body container and
 stores interactions in 2 places:
 
@@ -36,10 +31,6 @@ reasons, no base class with virtual methods defining such API programatically is
 be possible to create class template for this, though).
 
 Future (?):
-
-* The shared_ptr<Interaction> might be duplicated in body id2 as well. That would allow to retrieve
-  in a straigthforward manner all interactions with given body id, for instance. Performance implications
-  are not clear.
 
 * the linear vector might be removed; in favor of linear traversal of bodies by their subdomains,
   then traversing the map in each body. If the previous point would come to realization, half of the
@@ -119,7 +110,7 @@ class InteractionContainer: public Serializable{
 				else linPos++;}
 			return initSize-currSize;
 		}
-
+		
 	// we must call Scene's ctor (and from Scene::postLoad), since we depend on the existing BodyContainer at that point.
 	void postLoad__calledFromScene(const shared_ptr<BodyContainer>&);
 	void preLoad(InteractionContainer&);

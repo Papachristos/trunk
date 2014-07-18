@@ -26,9 +26,12 @@ To install daily-version one needs to add this repository to your
 	sudo apt-get install yadedaily
 
 If you have another distribution, not Ubuntu Precise (Version 12.04), be sure to use the
-correct name in the first line (for instance, jessie, trusty or wheezy).
+correct name in the first line (for instance, jessie, trusty or wheezy). For the list
+of currently supported distributions, please visit `yade-dem.org/packages <http://yade-dem.org/packages/>`_.
 
 After that you can normally start Yade using "yadedaily" or "yadedaily-batch" command.
+yadedaily on older distributions can have some disabled features due to older library
+versions, shipped with particular distribution. 
 
 Git-repository for packaging stuff is available on `GitHub <https://github.com/yade/yadedaily/>`_. 
 Each branch corresponds to one distribution e.g. precise, jessie etc.
@@ -112,7 +115,7 @@ Some of them are only optional. The last ones are only relevant for using the fl
 * `libQGLViewer <http://www.libqglviewer.com>`_
 * `python <http://www.python.org>`_, `numpy <http://numpy.scipy.org>`_, `ipython <http://ipython.scipy.org>`_
 * `matplotlib <http://matplotlib.sf.net>`_
-* `eigen3 <http://eigen.tuxfamily.org>`_ algebra library
+* `eigen3 <http://eigen.tuxfamily.org>`_ algebra library (minimal required version 3.2.1)
 * `gdb <http://www.gnu.org/software/gdb>`_ debugger
 * `sqlite3 <http://www.sqlite.org>`_ database engine
 * `Loki <http://loki-lib.sf.net>`_ library
@@ -145,7 +148,7 @@ should have root privileges
 		libgts-dev python-pygraphviz libvtk5-dev python-scientific libeigen3-dev \
 		python-xlib python-qt4 pyqt4-dev-tools gtk2-engines-pixbuf python-argparse \
 		libqglviewer-dev python-imaging libjs-jquery python-sphinx python-git python-bibtex \
-		libxmu-dev libxi-dev libcgal-dev help2man libbz2-dev zlib1g-dev \
+		libxmu-dev libxi-dev libcgal-dev help2man libbz2-dev zlib1g-dev
 		
 
 Some of packages (for example, cmake, eigen3) are mandatory, some of them
@@ -155,12 +158,12 @@ some of Yade features will be disabled (see the messages at the end of configura
 		
 Additional packages, which can become mandatory later::
 
-		sudo apt-get install python-gts python-minieigen \
+		sudo apt-get install python-gts python-minieigen
 		
 For effective usage of direct solvers in the PFV-type fluid coupling, the following libraries are recommended, together with eigen>=3.1: blas, lapack, suitesparse, and metis.
-All four of them are available in many different versions. Different combinations are possible and not all of them will work. The following was found to be effective on recent deb-based systems. On ubuntu 12.04, better compile openblas with USE_OPENMP=1, else yade will run on a single core.
+All four of them are available in many different versions. Different combinations are possible and not all of them will work. The following was found to be effective on recent deb-based systems. On ubuntu 12.04, better compile openblas with USE_OPENMP=1, else yade will run on a single core::
 
-		sudo apt-get install libopenblas-dev libsuitesparse-metis-dev \
+		sudo apt-get install libopenblas-dev libsuitesparse-metis-dev
 
 Some packages listed here are relatively new and they can be absent
 in your distribution (for example, libmetis-dev or python-gts). They can be 
@@ -170,10 +173,6 @@ or just ignored. In this case some features can be disabled.
 If you are using other distribution, than Debian or its derivatives, you should
 install the softwares listed above. Their names can differ from the 
 names of Debian-packages.
-
-
-
-
 
 
 Compilation

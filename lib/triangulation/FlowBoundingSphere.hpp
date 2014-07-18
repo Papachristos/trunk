@@ -17,7 +17,6 @@
 
 typedef pair<pair<int,int>, vector<double> > Constriction;
 
-using namespace std;
 namespace CGT {
 
 template<class _Tesselation>
@@ -31,7 +30,7 @@ class FlowBoundingSphere : public Network<_Tesselation>
 		//painfull, but we need that for templates inheritance...
 		using _N::T; using _N::xMin; using _N::xMax; using _N::yMin; using _N::yMax; using _N::zMin; using _N::zMax; using _N::Rmoy; using _N::sectionArea; using _N::Height; using _N::vTotal; using _N::currentTes; using _N::debugOut; using _N::nOfSpheres; using _N::xMinId; using _N::xMaxId; using _N::yMinId; using _N::yMaxId; using _N::zMinId; using _N::zMaxId; using _N::boundsIds; using _N::cornerMin; using _N::cornerMax;  using _N::VSolidTot; using _N::Vtotalissimo; using _N::vPoral; using _N::sSolidTot; using _N::vPoralPorosity; using _N::vTotalPorosity; using _N::boundaries; using _N::idOffset; using _N::vtkInfiniteVertices; using _N::vtkInfiniteCells; using _N::num_particles; using _N::boundingCells; using _N::facetVertices; using _N::facetNFictious;
 		//same for functions
-		using _N::defineFictiousCells; using _N::addBoundingPlanes; using _N::boundary;
+		using _N::defineFictiousCells; using _N::addBoundingPlanes; using _N::boundary; using _N::tesselation;
 
 		virtual ~FlowBoundingSphere();
  		FlowBoundingSphere();
@@ -52,6 +51,8 @@ class FlowBoundingSphere : public Network<_Tesselation>
 		vector<CellHandle> IPCells;
 		vector<pair<Point,Real> > imposedF;
 		vector<CellHandle> IFCells;
+		//Pointers to vectors used for user defined boundary pressure
+		vector<Real> *pxpos, *ppval;
 		
 		void initNewTri () {noCache=true; /*isLinearSystemSet=false; areCellsOrdered=false;*/}//set flags after retriangulation
 		bool permeabilityMap;
@@ -146,12 +147,13 @@ class FlowBoundingSphere : public Network<_Tesselation>
 		virtual void averageRelativeCellVelocity();
 		void averageFluidVelocity();
 		void applySinusoidalPressure(RTriangulation& Tri, double amplitude, double averagePressure, double loadIntervals);
+		void applyUserDefinedPressure(RTriangulation& Tri, vector<Real>& xpos, vector<Real>& pval);
 		bool isOnSolid  (double X, double Y, double Z);
 		double getPorePressure (double X, double Y, double Z);
 		void measurePressureProfile(double WallUpy, double WallDowny);
 		double averageSlicePressure(double Y);
 		double averagePressure();
-		double getCell (double X,double Y,double Z);
+		int getCell (double X,double Y,double Z);
 		double boundaryFlux(unsigned int boundaryId);
 		
 		vector<Real> averageFluidVelocityOnSphere(unsigned int Id_sph);

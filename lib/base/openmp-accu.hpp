@@ -2,20 +2,14 @@
 #pragma once 
 
 // for ZeroInitializer template
-#include<yade/lib/base/Math.hpp>
+#include <yade/lib/base/Math.hpp>
 
-#include<boost/serialization/split_free.hpp>
-#include<boost/lexical_cast.hpp>
-#include<string>
-#include<vector>
-#include<cstdlib>
-#include<unistd.h>
-#include<stdexcept>
-#include<iostream>
-
+#include <boost/serialization/split_free.hpp>
+#include <cstdlib>
+#include <unistd.h>
 
 #ifdef YADE_OPENMP
-#include"omp.h"
+#include "omp.h"
 
 // O(1) access container which stores data in contiguous chunks of memory
 // each chunk belonging to one thread
@@ -113,6 +107,57 @@ class OpenMPAccumulator{
 	// only useful for debugging
 	std::vector<T> getPerThreadData() const { std::vector<T> ret; for(int i=0; i<nThreads; i++) ret.push_back(*(T*)(data+i*eSize)); return ret; }
 };
+
+/* OpenMP implementation of std::vector. 
+ * Very minimal functionality, which is required by Yade
+ */ 
+template<typename T>
+class OpenMPVector{
+  std::vector<std::vector<T> > vals;
+  size_t sizeV;
+  public:
+    OpenMPVector() {sizeV = omp_get_max_threads(); vals.resize(sizeV);};
+    void push_back (const T& val) {vals[omp_get_thread_num()].push_back(val);};
+    size_t size() const {
+      size_t sumSize = 0;
+      for (size_t i=0; i<sizeV; i++) {
+        sumSize += vals[i].size();
+      }
+      return sumSize;
+    }
+    
+    size_t size(size_t t) const {
+      if (t >= sizeV) {
+        std::cerr<< ("Index is out of range.")<<std::endl; exit (EXIT_FAILURE);
+      } else {
+        return vals[t].size();
+      }
+    }
+    
+    size_t sizeT() {
+      return sizeV;
+    }
+    
+    T operator[](size_t ix) const {
+      if (ix >= size()) {
+        std::cerr<< ("Index is out of range.")<<std::endl; exit (EXIT_FAILURE);
+      } else {
+        size_t t = 0;
+        while (ix >= vals[t].size()) {
+          ix-=vals[t].size();
+          t+=1;
+        }
+        return vals[t][ix];
+      }
+    }
+    
+    void clear() {
+      for (size_t i=0; i<sizeV; i++) {
+        vals[i].clear();
+      }
+    }
+    
+};
 #else 
 template<typename T>
 class OpenMPArrayAccumulator{
@@ -145,6 +190,8 @@ public:
 	// debugging only
 	std::vector<T> getPerThreadData() const { std::vector<T> ret; ret.push_back(data); return ret; }
 };
+
+template <typename T> using OpenMPVector=std::vector <T>;
 #endif
 
 // boost serialization

@@ -16,10 +16,7 @@
 #include<yade/core/Scene.hpp>
 #include<yade/core/Interaction.hpp>
 #include<yade/core/DisplayParameters.hpp>
-#include<boost/filesystem/operations.hpp>
 #include<boost/algorithm/string.hpp>
-#include<boost/version.hpp>
-#include<boost/python.hpp>
 #include<sstream>
 #include<iomanip>
 #include<boost/algorithm/string/case_conv.hpp>
@@ -28,8 +25,6 @@
 
 
 #include<QtGui/qevent.h>
-
-using namespace boost;
 
 #ifdef YADE_GL2PS
 	#include<gl2ps.h>
@@ -40,14 +35,14 @@ static int last(-1);
 void GLViewer::useDisplayParameters(size_t n){
 	LOG_DEBUG("Loading display parameters from #"<<n);
 	vector<shared_ptr<DisplayParameters> >& dispParams=Omega::instance().getScene()->dispParams;
-	if(dispParams.size()<=(size_t)n){ throw std::invalid_argument(("Display parameters #"+lexical_cast<string>(n)+" don't exist (number of entries "+lexical_cast<string>(dispParams.size())+")").c_str());; return;}
+	if(dispParams.size()<=(size_t)n){ throw std::invalid_argument(("Display parameters #"+boost::lexical_cast<string>(n)+" don't exist (number of entries "+boost::lexical_cast<string>(dispParams.size())+")").c_str());; return;}
 	const shared_ptr<DisplayParameters>& dp=dispParams[n];
 	string val;
 	if(dp->getValue("OpenGLRenderer",val)){ istringstream oglre(val);
-		yade::ObjectIO::load<typeof(renderer),boost::archive::xml_iarchive>(oglre,"renderer",renderer);
+		yade::ObjectIO::load<decltype(renderer),boost::archive::xml_iarchive>(oglre,"renderer",renderer);
 	}
 	else { LOG_WARN("OpenGLRenderer configuration not found in display parameters, skipped.");}
-	if(dp->getValue("GLViewer",val)){ GLViewer::setState(val); displayMessage("Loaded view configuration #"+lexical_cast<string>(n)); }
+	if(dp->getValue("GLViewer",val)){ GLViewer::setState(val); displayMessage("Loaded view configuration #"+boost::lexical_cast<string>(n)); }
 	else { LOG_WARN("GLViewer configuration not found in display parameters, skipped."); }
 }
 
@@ -57,10 +52,10 @@ void GLViewer::saveDisplayParameters(size_t n){
 	if(dispParams.size()<=n){while(dispParams.size()<=n) dispParams.push_back(shared_ptr<DisplayParameters>(new DisplayParameters));} assert(n<dispParams.size());
 	shared_ptr<DisplayParameters>& dp=dispParams[n];
 	ostringstream oglre;
-	yade::ObjectIO::save<typeof(renderer),boost::archive::xml_oarchive>(oglre,"renderer",renderer);
+	yade::ObjectIO::save<decltype(renderer),boost::archive::xml_oarchive>(oglre,"renderer",renderer);
 	dp->setValue("OpenGLRenderer",oglre.str());
 	dp->setValue("GLViewer",GLViewer::getState());
-	displayMessage("Saved view configuration ot #"+lexical_cast<string>(n));
+	displayMessage("Saved view configuration ot #"+boost::lexical_cast<string>(n));
 }
 
 void GLViewer::draw()
@@ -185,7 +180,7 @@ void GLViewer::postDraw(){
 		}
 		//LOG_DEBUG("Screen offsets for axes: "<<" x("<<screenDxDy[0][0]<<","<<screenDxDy[0][1]<<") y("<<screenDxDy[1][0]<<","<<screenDxDy[1][1]<<") z("<<screenDxDy[2][0]<<","<<screenDxDy[2][1]<<")");
 		int margin=10; // screen pixels
-		int scaleCenter[2]; scaleCenter[0]=abs(extremalDxDy[0])+margin; scaleCenter[1]=abs(extremalDxDy[1])+margin;
+		int scaleCenter[2]; scaleCenter[0]=std::abs(extremalDxDy[0])+margin; scaleCenter[1]=std::abs(extremalDxDy[1])+margin;
 		//LOG_DEBUG("Center of scale "<<scaleCenter[0]<<","<<scaleCenter[1]);
 		//displayMessage(QString().sprintf("displayed scene radius %g",displayedSceneRadius()));
 		startScreenCoordinatesSystem();

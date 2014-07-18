@@ -8,7 +8,7 @@
 
 
 #include<yade/pkg/dem/ElasticContactLaw.hpp>
-#include<yade/pkg/dem/Ip2_FrictMat_FrictMat_FrictPhys.hpp>
+#include<yade/pkg/dem/FrictPhys.hpp>
 #include<yade/pkg/dem/GlobalStiffnessTimeStepper.hpp>
 #include<yade/pkg/common/ElastMat.hpp>
 #include<yade/pkg/dem/TriaxialStressController.hpp>
@@ -34,14 +34,11 @@
 #include<yade/pkg/dem/Ig2_Sphere_Sphere_ScGeom.hpp>
 #include<yade/pkg/dem/Ig2_Box_Sphere_ScGeom.hpp>
 #include<yade/pkg/dem/Ig2_Facet_Sphere_ScGeom.hpp>
-#include<yade/pkg/dem/Ip2_FrictMat_FrictMat_FrictPhys.hpp>
 #include<yade/pkg/common/Bo1_Sphere_Aabb.hpp>
 #include<yade/pkg/common/Bo1_Box_Aabb.hpp>
 #include<yade/pkg/common/Bo1_Facet_Aabb.hpp>
 #include<yade/pkg/common/Wall.hpp>
 
-#include <boost/filesystem/convenience.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/numeric/conversion/bounds.hpp>
 #include <boost/limits.hpp>
 // random
@@ -55,9 +52,6 @@
 #include "TriaxialTest.hpp"
 CREATE_LOGGER(TriaxialTest);
 YADE_PLUGIN((TriaxialTest));
-
-using namespace boost;
-using namespace std;
 
 TriaxialTest::~TriaxialTest () {}
 
@@ -91,10 +85,10 @@ bool TriaxialTest::generate(string& message)
 			upperCorner=lowerCorner+dimensions;
 			num=sphere_pack.makeCloud(lowerCorner,upperCorner,radiusMean,radiusStdDev,numberOfGrains);
 		}
-		message+="Generated a sample with " + lexical_cast<string>(num) + " spheres inside box of dimensions: ("
-			+ lexical_cast<string>(upperCorner[0]-lowerCorner[0]) + ","
-			+ lexical_cast<string>(upperCorner[1]-lowerCorner[1]) + ","
-			+ lexical_cast<string>(upperCorner[2]-lowerCorner[2]) + ").";}
+		message+="Generated a sample with " + boost::lexical_cast<string>(num) + " spheres inside box of dimensions: ("
+			+ boost::lexical_cast<string>(upperCorner[0]-lowerCorner[0]) + ","
+			+ boost::lexical_cast<string>(upperCorner[1]-lowerCorner[1]) + ","
+			+ boost::lexical_cast<string>(upperCorner[2]-lowerCorner[2]) + ").";}
 	else {
 		if(radiusMean>0) LOG_WARN("radiusMean ignored, since importFilename specified.");
 		sphere_pack.fromFile(importFilename);
@@ -111,9 +105,9 @@ bool TriaxialTest::generate(string& message)
 	 	Vector3r center		= Vector3r((lowerCorner[0]+upperCorner[0])/2,
 	 					lowerCorner[1]-thickness/2.0,
 	 					(lowerCorner[2]+upperCorner[2])/2);
-	 	Vector3r halfSize	= Vector3r(wallOversizeFactor*fabs(lowerCorner[0]-upperCorner[0])/2+thickness,
+	 	Vector3r halfSize	= Vector3r(wallOversizeFactor*std::abs(lowerCorner[0]-upperCorner[0])/2+thickness,
 						thickness/2.0,
-	 					wallOversizeFactor*fabs(lowerCorner[2]-upperCorner[2])/2+thickness);
+	 					wallOversizeFactor*std::abs(lowerCorner[2]-upperCorner[2])/2+thickness);
 		createBox(body,center,halfSize,true);
 	 	scene->bodies->insert(body);
 		triaxialcompressionEngine->wall_bottom_id = body->getId();
@@ -121,9 +115,9 @@ bool TriaxialTest::generate(string& message)
 	 	center			= Vector3r((lowerCorner[0]+upperCorner[0])/2,
 	 					upperCorner[1]+thickness/2.0,
 	 					(lowerCorner[2]+upperCorner[2])/2);
-	 	halfSize		= Vector3r(wallOversizeFactor*fabs(lowerCorner[0]-upperCorner[0])/2+thickness,
+	 	halfSize		= Vector3r(wallOversizeFactor*std::abs(lowerCorner[0]-upperCorner[0])/2+thickness,
 	 					thickness/2.0,
-	 					wallOversizeFactor*fabs(lowerCorner[2]-upperCorner[2])/2+thickness);
+	 					wallOversizeFactor*std::abs(lowerCorner[2]-upperCorner[2])/2+thickness);
 		createBox(body,center,halfSize,true);
 	 	scene->bodies->insert(body);
 		triaxialcompressionEngine->wall_top_id = body->getId();
@@ -132,8 +126,8 @@ bool TriaxialTest::generate(string& message)
 	 					(lowerCorner[1]+upperCorner[1])/2,
 	 					(lowerCorner[2]+upperCorner[2])/2);
 		halfSize		= Vector3r(thickness/2.0,
-	 					wallOversizeFactor*fabs(lowerCorner[1]-upperCorner[1])/2+thickness,
-	 					wallOversizeFactor*fabs(lowerCorner[2]-upperCorner[2])/2+thickness);
+	 					wallOversizeFactor*std::abs(lowerCorner[1]-upperCorner[1])/2+thickness,
+	 					wallOversizeFactor*std::abs(lowerCorner[2]-upperCorner[2])/2+thickness);
 		createBox(body,center,halfSize,true);
 	 	scene->bodies->insert(body);
 		triaxialcompressionEngine->wall_left_id = body->getId();
@@ -142,8 +136,8 @@ bool TriaxialTest::generate(string& message)
 	 					(lowerCorner[1]+upperCorner[1])/2,
 						(lowerCorner[2]+upperCorner[2])/2);
 	 	halfSize		= Vector3r(thickness/2.0,
-	 					wallOversizeFactor*fabs(lowerCorner[1]-upperCorner[1])/2+thickness,
-	 					wallOversizeFactor*fabs(lowerCorner[2]-upperCorner[2])/2+thickness);
+	 					wallOversizeFactor*std::abs(lowerCorner[1]-upperCorner[1])/2+thickness,
+	 					wallOversizeFactor*std::abs(lowerCorner[2]-upperCorner[2])/2+thickness);
 
 		createBox(body,center,halfSize,true);
 	 	scene->bodies->insert(body);
@@ -152,8 +146,8 @@ bool TriaxialTest::generate(string& message)
 	 	center			= Vector3r((lowerCorner[0]+upperCorner[0])/2,
 	 					(lowerCorner[1]+upperCorner[1])/2,
 	 					lowerCorner[2]-thickness/2.0);
-	 	halfSize		= Vector3r(wallOversizeFactor*fabs(lowerCorner[0]-upperCorner[0])/2+thickness,
-	 					wallOversizeFactor*fabs(lowerCorner[1]-upperCorner[1])/2+thickness,
+	 	halfSize		= Vector3r(wallOversizeFactor*std::abs(lowerCorner[0]-upperCorner[0])/2+thickness,
+	 					wallOversizeFactor*std::abs(lowerCorner[1]-upperCorner[1])/2+thickness,
 	 					thickness/2.0);
 		createBox(body,center,halfSize,true);
 	 	scene->bodies->insert(body);
@@ -162,8 +156,8 @@ bool TriaxialTest::generate(string& message)
 	 	center			= Vector3r((lowerCorner[0]+upperCorner[0])/2,
 	 					(lowerCorner[1]+upperCorner[1])/2,
 	 					upperCorner[2]+thickness/2.0);
-	 	halfSize		= Vector3r(wallOversizeFactor*fabs(lowerCorner[0]-upperCorner[0])/2+thickness,
-	 					wallOversizeFactor*fabs(lowerCorner[1]-upperCorner[1])/2+thickness,
+	 	halfSize		= Vector3r(wallOversizeFactor*std::abs(lowerCorner[0]-upperCorner[0])/2+thickness,
+	 					wallOversizeFactor*std::abs(lowerCorner[1]-upperCorner[1])/2+thickness,
 	 					thickness/2.0);
 		createBox(body,center,halfSize,true);
 	 	scene->bodies->insert(body);

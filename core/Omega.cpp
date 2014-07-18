@@ -15,14 +15,8 @@
 #include<yade/lib/base/Math.hpp>
 #include<yade/lib/multimethods/FunctorWrapper.hpp>
 #include<yade/lib/multimethods/Indexable.hpp>
-#include<cstdlib>
-#include<boost/filesystem/operations.hpp>
-#include<boost/filesystem/convenience.hpp>
-#include<boost/filesystem/exception.hpp>
 #include<boost/algorithm/string.hpp>
 #include<boost/thread/mutex.hpp>
-#include<boost/version.hpp>
-#include<boost/python.hpp>
 
 #include<yade/lib/serialization/ObjectIO.hpp>
 
@@ -71,8 +65,8 @@ void Omega::switchToScene(int i) {
 
 
 
-Real Omega::getRealTime(){ return (microsec_clock::local_time()-startupLocalTime).total_milliseconds()/1e3; }
-time_duration Omega::getRealTime_duration(){return microsec_clock::local_time()-startupLocalTime;}
+Real Omega::getRealTime(){ return (boost::posix_time::microsec_clock::local_time()-startupLocalTime).total_milliseconds()/1e3; }
+boost::posix_time::time_duration Omega::getRealTime_duration(){return boost::posix_time::microsec_clock::local_time()-startupLocalTime;}
 
 
 void Omega::initTemps(){
@@ -82,14 +76,14 @@ void Omega::initTemps(){
 }
 
 void Omega::cleanupTemps(){
-	filesystem::path tmpPath(tmpFileDir);
-	filesystem::remove_all(tmpPath);
+  boost::filesystem::path tmpPath(tmpFileDir);
+  boost::filesystem::remove_all(tmpPath);
 }
 
 std::string Omega::tmpFilename(){
 	if(tmpFileDir.empty()) throw runtime_error("tmpFileDir empty; Omega::initTemps not yet called()?");
 	boost::mutex::scoped_lock lock(tmpFileCounterMutex);
-	return tmpFileDir+"/tmp-"+lexical_cast<string>(tmpFileCounter++);
+	return tmpFileDir+"/tmp-"+boost::lexical_cast<string>(tmpFileCounter++);
 }
 
 void Omega::reset(){
@@ -107,7 +101,7 @@ void Omega::init(){
 }
 
 void Omega::timeInit(){
-	startupLocalTime=microsec_clock::local_time();
+	startupLocalTime=boost::posix_time::microsec_clock::local_time();
 }
 
 void Omega::createSimulationLoop(){	simulationLoop=shared_ptr<ThreadRunner>(new ThreadRunner(&simulationFlow_));}
@@ -145,9 +139,7 @@ void Omega::buildDynlibDatabase(const vector<string>& dynlibsList){
 		try {
 			LOG_DEBUG("Factoring plugin "<<name);
 			f = ClassFactory::instance().createShared(name);
-			dynlibs[name].isIndexable    = dynamic_pointer_cast<Indexable>(f);
-			dynlibs[name].isFactorable   = dynamic_pointer_cast<Factorable>(f);
-			dynlibs[name].isSerializable = dynamic_pointer_cast<Serializable>(f);
+			dynlibs[name].isSerializable = ((YADE_PTR_DYN_CAST<Serializable>(f)).get()!=0);
 			for(int i=0;i<f->getBaseClassNumber();i++){
 				dynlibs[name].baseClasses.insert(f->getBaseClassName(i));
 			}
@@ -167,7 +159,7 @@ void Omega::buildDynlibDatabase(const vector<string>& dynlibsList){
 		if(getenv("YADE_DEBUG")) cerr<<endl<<"[[[ Round "<<i<<" ]]]: ";
 		std::list<string> done;
 		for(std::list<string>::iterator I=pythonables.begin(); I!=pythonables.end(); ){
-			shared_ptr<Serializable> s=static_pointer_cast<Serializable>(ClassFactory::instance().createShared(*I));
+			shared_ptr<Serializable> s=boost::static_pointer_cast<Serializable>(ClassFactory::instance().createShared(*I));
 			try{
 				if(getenv("YADE_DEBUG")) cerr<<"{{"<<*I<<"}}";
 				s->pyRegisterClass(wrapperScope);
@@ -236,8 +228,8 @@ void Omega::loadPlugins(vector<string> pluginFiles){
 }
 
 void Omega::loadSimulation(const string& f, bool quiet){
-	bool isMem=algorithm::starts_with(f,":memory:");
-	if(!isMem && !filesystem::exists(f)) throw runtime_error("Simulation file to load doesn't exist: "+f);
+	bool isMem=boost::algorithm::starts_with(f,":memory:");
+	if(!isMem && !boost::filesystem::exists(f)) throw runtime_error("Simulation file to load doesn't exist: "+f);
 	if(isMem && memSavedSimulations.count(f)==0) throw runtime_error("Cannot load nonexistent memory-saved simulation "+f);
 	
 	if(!quiet) LOG_INFO("Loading file "+f);
@@ -250,7 +242,7 @@ void Omega::loadSimulation(const string& f, bool quiet){
 		RenderMutexLock lock;
 		if(isMem){
 			istringstream iss(memSavedSimulations[f]);
-			yade::ObjectIO::load<typeof(scene),boost::archive::binary_iarchive>(iss,"scene",scene);
+			yade::ObjectIO::load<decltype(scene),boost::archive::binary_iarchive>(iss,"scene",scene);
 		} else {
 			yade::ObjectIO::load(f,"scene",scene);
 		}
@@ -269,10 +261,10 @@ void Omega::saveSimulation(const string& f, bool quiet){
 	//shared_ptr<Scene> scene = getScene();
 	shared_ptr<Scene>& scene = scenes[currentSceneNb];
 	//shared_ptr<Scene>& scene = getScene();
-	if(algorithm::starts_with(f,":memory:")){
+	if(boost::algorithm::starts_with(f,":memory:")){
 		if(memSavedSimulations.count(f)>0 && !quiet) LOG_INFO("Overwriting in-memory saved simulation "<<f);
 		ostringstream oss;
-		yade::ObjectIO::save<typeof(scene),boost::archive::binary_oarchive>(oss,"scene",scene);
+		yade::ObjectIO::save<decltype(scene),boost::archive::binary_oarchive>(oss,"scene",scene);
 		memSavedSimulations[f]=oss.str();
 	}
 	else {

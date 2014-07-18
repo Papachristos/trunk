@@ -22,7 +22,7 @@ void GravityEngine::action(){
 	YADE_PARALLEL_FOREACH_BODY_BEGIN(const shared_ptr<Body>& b, scene->bodies){
 		// skip clumps, only apply forces on their constituents
 		if(b->isClump()) continue;
-		if(mask!=0 && (b->groupMask & mask)==0) continue;
+		if(mask!=0 && !b->maskCompatible(mask)) continue;
 		scene->forces.addForce(b->getId(),gravity*b->state->mass);
 		// work done by gravity is "negative", since the energy appears in the system from outside
 		if(trackEnergy) scene->energy->add(-gravity.dot(b->state->vel)*b->state->mass*dt,"gravWork",fieldWorkIx,/*non-incremental*/false);
@@ -33,7 +33,7 @@ void CentralGravityEngine::action(){
 	const Vector3r& centralPos=Body::byId(centralBody)->state->pos;
 	FOREACH(const shared_ptr<Body>& b, *scene->bodies){
 		if(b->isClump() || b->getId()==centralBody) continue; // skip clumps and central body
-		if(mask!=0 && (b->groupMask & mask)==0) continue;
+		if(mask!=0 && !b->maskCompatible(mask)) continue;
 		Real F=accel*b->state->mass;
 		Vector3r toCenter=centralPos-b->state->pos; toCenter.normalize();
 		scene->forces.addForce(b->getId(),F*toCenter);
@@ -44,7 +44,7 @@ void CentralGravityEngine::action(){
 void AxialGravityEngine::action(){
 	FOREACH(const shared_ptr<Body>&b, *scene->bodies){
 		if(!b || b->isClump()) continue;
-		if(mask!=0 && (b->groupMask & mask)==0) continue;
+		if(mask!=0 && !b->maskCompatible(mask)) continue;
 		/* http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html */
 		const Vector3r& x0=b->state->pos;
 		const Vector3r& x1=axisPoint;
@@ -66,7 +66,7 @@ Vector2i HdapsGravityEngine::readSysfsFile(const string& name){
    boost::cmatch matches;
 	if(!boost::regex_match(buf,matches,re)) throw std::runtime_error(("HdapsGravityEngine: error parsing data from "+name).c_str());
 	//cerr<<matches[1]<<","<<matches[2]<<endl;
-	return Vector2i(lexical_cast<int>(matches[1]),lexical_cast<int>(matches[2]));
+	return Vector2i(boost::lexical_cast<int>(matches[1]),boost::lexical_cast<int>(matches[2]));
 
 }
 
@@ -77,8 +77,8 @@ void HdapsGravityEngine::action(){
 		Vector2i a=readSysfsFile(hdapsDir+"/position");
 		lastReading=now;
 		a-=calibrate;
-		if(abs(a[0]-accel[0])>updateThreshold) accel[0]=a[0];
-		if(abs(a[1]-accel[1])>updateThreshold) accel[1]=a[1];
+		if(std::abs(a[0]-accel[0])>updateThreshold) accel[0]=a[0];
+		if(std::abs(a[1]-accel[1])>updateThreshold) accel[1]=a[1];
 		Quaternionr trsf(AngleAxisr(.5*accel[0]*M_PI/180.,-Vector3r::UnitY())*AngleAxisr(.5*accel[1]*M_PI/180.,-Vector3r::UnitX()));
 		gravity=trsf*zeroGravity;
 	}

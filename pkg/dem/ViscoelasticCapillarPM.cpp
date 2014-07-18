@@ -83,6 +83,9 @@ void Law2_ScGeom_ViscElCapPhys_Basic::go(shared_ptr<IGeom>& _geom, shared_ptr<IP
   if (not(phys.liqBridgeCreated) and phys.Capillar and geom.penetrationDepth>=0) {
     phys.liqBridgeCreated = true;
     phys.liqBridgeActive = false;
+    #ifdef YADE_LIQMIGRATION
+    scene->addIntrs.push_back(I);
+    #endif
     Sphere* s1=dynamic_cast<Sphere*>(bodies[id1]->shape.get());
     Sphere* s2=dynamic_cast<Sphere*>(bodies[id2]->shape.get());
     if (s1 and s2) {
@@ -114,6 +117,16 @@ void Law2_ScGeom_ViscElCapPhys_Basic::go(shared_ptr<IGeom>& _geom, shared_ptr<IP
         VLiqBridg -= phys.Vb;
         NLiqBridg -= 1;
       }
+      #ifdef YADE_LIQMIGRATION
+        if (phys.Vb > 0.0 and ((phys.Vf1+phys.Vf2) == 0.0)) {
+          phys.Vf1 = phys.Vb/2.0;
+          phys.Vf2 = phys.Vb/2.0;
+        }
+        const intReal B1={id1, phys.Vf1};
+        const intReal B2={id2, phys.Vf2};
+        scene->delIntrs.push_back(B1);
+        scene->delIntrs.push_back(B2);
+      #endif
       scene->interactions->requestErase(I);
       return;
     };
@@ -319,13 +332,12 @@ Real Law2_ScGeom_ViscElCapPhys_Basic::Soulie_f(const ScGeom& geom, ViscElCapPhys
    * Please, use this model only for testing purposes.
    * 
    */
-     
+  
   const Real R = phys.R;
   const Real Gamma = phys.gamma;
   const Real D = -geom.penetrationDepth;
   const Real V = phys.Vb;
   const Real Theta = phys.theta;
-  
   
   const Real a = -1.1*pow((V/(R*R*R)), -0.53);
   const Real b = (-0.148*log(V/(R*R*R)) - 0.96)*Theta*Theta -0.0082*log(V/(R*R*R)) + 0.48;
@@ -339,3 +351,254 @@ Real Law2_ScGeom_ViscElCapPhys_Basic::Soulie_f(const ScGeom& geom, ViscElCapPhys
 Real Law2_ScGeom_ViscElCapPhys_Basic::None_f(const ScGeom& geom, ViscElCapPhys& phys) {
   return 0;
 }
+
+#ifdef YADE_LIQMIGRATION
+YADE_PLUGIN((LiqControl));
+void LiqControl::action(){
+  // This function implements liquid migration model, introduced here [Mani2013]
+  mapBodyInt bI;
+  mapBodyInt bodyNeedUpdate;
+  
+  // Calculate, how much new contacts will be at each body
+  for (unsigned int i=0; i<scene->addIntrs.size(); i++) {
+    shared_ptr<Body> b1 = Body::byId(scene->addIntrs[i]->getId1(),scene);
+    shared_ptr<Body> b2 = Body::byId(scene->addIntrs[i]->getId2(),scene);
+    
+    if(not(mask!=0 && ((b1->groupMask & b2->groupMask & mask)==0))) {
+      addBodyMapInt( bI, scene->addIntrs[i]->getId1() );
+      addBodyMapInt( bI, scene->addIntrs[i]->getId2() );
+    }
+  }
+  
+  // Update volume water at each deleted interaction for each body
+  for (unsigned int i=0; i<scene->delIntrs.size(); i++) {
+    shared_ptr<Body> b = Body::byId(scene->delIntrs[i].id,scene);
+    b->Vf += scene->delIntrs[i].Vol;
+    addBodyMapInt(bodyNeedUpdate, scene->delIntrs[i].id);
+    liqVolRup += scene->delIntrs[i].Vol;
+  }
+  scene->delIntrs.clear();
+  
+  // Update volume bridge at each new added interaction
+  mapBodyReal bodyUpdateLiquid;
+  for (unsigned int i=0; i<scene->addIntrs.size(); i++) {
+    shared_ptr<Body> b1 = Body::byId(scene->addIntrs[i]->getId1(),scene);
+    shared_ptr<Body> b2 = Body::byId(scene->addIntrs[i]->getId2(),scene);
+    
+    const id_t id1 = b1->id;
+    const id_t id2 = b2->id;
+    
+    ViscElCapPhys* Vb=dynamic_cast<ViscElCapPhys*>(scene->addIntrs[i]->phys.get());
+     
+    if(mask!=0 && ((b1->groupMask & b2->groupMask & mask)==0)) {
+      Vb->Vb = 0.0;
+      Vb->Vf1 = 0.0;
+      Vb->Vf2 = 0.0;
+      Vb->Vmax = 0.0;
+    } else {
+      const Real Vmax = vMax(b1, b2);
+      Vb->Vmax = Vmax;
+      
+      Real Vf1 = 0.0;
+      Real Vf2 = 0.0;
+      
+      if ((b1->Vmin)<b1->Vf) { Vf1 = (b1->Vf - b1->Vmin)/bI[id1]; }
+      if ((b2->Vmin)<b2->Vf) { Vf2 = (b2->Vf - b2->Vmin)/bI[id2]; }
+      
+      Real Vrup = Vf1+Vf2;
+      
+      if (Vrup > Vmax) {
+        Vf1 *= Vmax/Vrup;
+        Vf2 *= Vmax/Vrup;
+        Vrup = Vf1 + Vf2;
+      }
+      
+      liqVolShr += Vrup;
+      addBodyMapReal(bodyUpdateLiquid, id1, -Vf1);
+      addBodyMapReal(bodyUpdateLiquid, id2, -Vf2);
+      
+      Vb->Vb = Vrup;
+      if (particleconserve) {
+        Vb->Vf1 = Vf1;
+        Vb->Vf2 = Vf2;
+      } else {
+        Vb->Vf1 = Vrup/2.0;
+        Vb->Vf2 = Vrup/2.0;
+      }
+    }
+  }
+  
+  scene->addIntrs.clear();
+  
+  // Update water volume in body
+  for (mapBodyReal::const_iterator it = bodyUpdateLiquid.begin(); it != bodyUpdateLiquid.end(); ++it) {
+    Body::byId(it->first)->Vf += it->second;
+  }
+  
+  // Update contacts around body
+  for (mapBodyInt::const_iterator it = bodyNeedUpdate.begin(); it != bodyNeedUpdate.end(); ++it) {
+    updateLiquid(Body::byId(it->first));
+  }
+}
+
+void LiqControl::updateLiquid(shared_ptr<Body> b){
+  if (b->Vf<=b->Vmin) {
+    return;
+  } else {
+    // How much liquid can body share
+    const Real LiqCanBeShared = b->Vf - b->Vmin;
+    
+    // Check how much liquid can accept contacts 
+    Real LiqContactsAccept = 0.0;
+    unsigned int contactN = 0;
+    for(Body::MapId2IntrT::iterator it=b->intrs.begin(),end=b->intrs.end(); it!=end; ++it) {
+      if(!((*it).second) or !(((*it).second)->isReal()))  continue;
+      ViscElCapPhys* physT=dynamic_cast<ViscElCapPhys*>(((*it).second)->phys.get());
+      if ((physT->Vb < physT->Vmax) and (physT->Vmax > 0)) {
+        LiqContactsAccept+=physT->Vmax-physT->Vb;
+        contactN++;
+      }
+    }
+    
+    if (contactN>0) {
+      //There are some contacts, which can be filled
+      Real FillLevel = 0.0;
+      if (LiqContactsAccept > LiqCanBeShared) {   // Share all available liquid from body to contacts
+        const Real LiquidWillBeShared = b->Vf - b->Vmin;
+        b->Vf = b->Vmin;
+        FillLevel = LiquidWillBeShared/LiqContactsAccept;
+      } else {                                    // Not all available liquid from body can be shared
+        b->Vf -= LiqContactsAccept;
+        FillLevel = 1.0;
+      }
+      
+      for(Body::MapId2IntrT::iterator it=b->intrs.begin(),end=b->intrs.end(); it!=end; ++it) {
+        if(!((*it).second) or !(((*it).second)->isReal()))  continue;
+        ViscElCapPhys* physT=dynamic_cast<ViscElCapPhys*>(((*it).second)->phys.get());
+        if ((physT->Vb < physT->Vmax) and (physT->Vmax > 0)) {
+          const Real addVolLiq =  (physT->Vmax - physT->Vb)*FillLevel;
+          liqVolShr += addVolLiq;
+          physT->Vb += addVolLiq;
+          if (particleconserve) {
+            if (((*it).second)->getId1() == (*it).first) {
+              physT->Vf2+=addVolLiq;
+            } else if (((*it).second)->getId2() == (*it).first) {
+              physT->Vf1+=addVolLiq;
+            }
+          } else {
+            physT->Vf1+=addVolLiq/2.0;
+            physT->Vf2+=addVolLiq/2.0;
+          }
+        }
+      }
+      return;
+    } else {
+      return;
+    }
+  }
+}
+
+void LiqControl::addBodyMapInt( mapBodyInt &  m, Body::id_t b  ){
+  mapBodyInt::const_iterator got;
+  got = m.find (b);
+  if ( got == m.end() ) {
+    m.insert (mapBodyInt::value_type(b,1));
+  } else {
+    m[b] += 1;
+  }
+}
+
+void LiqControl::addBodyMapReal( mapBodyReal & m, Body::id_t b, Real addV ) {
+  mapBodyReal::const_iterator got;
+  got = m.find (b);
+  if ( got == m.end() ) {
+    m.insert (mapBodyReal::value_type(b, addV));
+  } else {
+    m[b] += addV;
+  }
+}
+
+Real LiqControl::vMax(shared_ptr<Body> const b1, shared_ptr<Body> const b2) {
+  Sphere* s1=dynamic_cast<Sphere*>(b1->shape.get());
+  Sphere* s2=dynamic_cast<Sphere*>(b2->shape.get());
+  Real minR = 0.0;
+  if (s1 and s2) {
+    minR = std::min (s1->radius, s2->radius);
+  } else if (s1 and not(s2)) {
+    minR = s1->radius;
+  } else {
+    minR = s2->radius;
+  }
+  return vMaxCoef*minR*minR*minR;
+}
+
+Real liqVolIterBody (shared_ptr<Body> b) {
+  Real LiqVol = 0.0;
+  if (!b) {
+    return LiqVol;
+  } else {
+    for(Body::MapId2IntrT::iterator it=b->intrs.begin(),end=b->intrs.end(); it!=end; ++it) {
+      if(!((*it).second) or !(((*it).second)->isReal()))  continue;
+      ViscElCapPhys* physT=dynamic_cast<ViscElCapPhys*>(((*it).second)->phys.get());
+      if (physT and physT->Vb and physT->Vb>0) {
+        if (((*it).second)->id1 == b->id) {
+          if (physT->Vf1 > 0 or physT->Vf2 > 0) {
+            LiqVol += physT->Vf1;
+          } else {
+            LiqVol += physT->Vb/2.0;
+          }
+        } else {
+          if (physT->Vf1 > 0 or physT->Vf2 > 0) {
+            LiqVol += physT->Vf2;
+          } else {
+            LiqVol += physT->Vb/2.0;
+          }
+        }
+      }
+    }
+    return LiqVol;
+  }
+}
+
+Real LiqControl::liqVolBody (id_t id) const {
+  Scene* scene=Omega::instance().getScene().get();
+  const BodyContainer& bodies = *scene->bodies;
+  if (id >=0 and bodies[id]) {
+    if (bodies[id]->Vf > 0) {
+      return bodies[id]->Vf + liqVolIterBody(bodies[id]);
+    } else {
+      return liqVolIterBody(bodies[id]);
+    }
+  }
+  else return -1;
+}
+
+Real LiqControl::totalLiqVol(int mask=0) const{
+  Scene* scene=Omega::instance().getScene().get();
+  Real totalLiqVol = 0.0;
+  FOREACH(const shared_ptr<Body>& b, *scene->bodies){
+    if((mask>0 && (b->groupMask & mask)==0) or (!b)) continue;
+    totalLiqVol += liqVolIterBody(b);
+    if (b->Vf > 0) {totalLiqVol +=b->Vf;}
+  }
+  return totalLiqVol;
+}
+
+bool LiqControl::addLiqInter(id_t id1, id_t id2, Real liq) {
+  if (id1<0 or id2<0 or id1==id2 or liq<=0) return false;
+  
+  Scene* scene=Omega::instance().getScene().get();
+  shared_ptr<InteractionContainer>& intrs=scene->interactions;
+  const shared_ptr<Interaction>& I=intrs->find(id1,id2);
+  if (I->isReal()) {
+    ViscElCapPhys* physT=dynamic_cast<ViscElCapPhys*>(I->phys.get());
+    if (physT and physT->Vb <= physT->Vmax and liq <= (physT->Vmax - physT->Vb)) {
+      physT->Vb += liq;
+      physT->Vf1 += liq/2.0;
+      physT->Vf2 += liq/2.0;
+      return true;
+    }
+  }
+  return false;
+}
+#endif

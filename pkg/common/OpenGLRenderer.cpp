@@ -55,7 +55,7 @@ void OpenGLRenderer::init(){
 	// reported http://www.mail-archive.com/yade-users@lists.launchpad.net/msg01482.html
 	#if 0
 		int e=glGetError();
-		if(e!=GL_NO_ERROR) throw runtime_error((string("OpenGLRenderer::init returned GL error ")+lexical_cast<string>(e)).c_str());
+		if(e!=GL_NO_ERROR) throw runtime_error((string("OpenGLRenderer::init returned GL error ")+boost::lexical_cast<string>(e)).c_str());
 	#endif
 }
 
@@ -68,7 +68,7 @@ void OpenGLRenderer::setBodiesRefSe3(){
 
 void OpenGLRenderer::initgl(){
 	LOG_DEBUG("(re)initializing GL for gldraw methods.\n");
-	#define _SETUP_DISPATCHER(names,FunctorType,dispatcher) dispatcher.clearMatrix(); FOREACH(string& s,names) {shared_ptr<FunctorType> f(static_pointer_cast<FunctorType>(ClassFactory::instance().createShared(s))); f->initgl(); dispatcher.add(f);}
+	#define _SETUP_DISPATCHER(names,FunctorType,dispatcher) dispatcher.clearMatrix(); FOREACH(string& s,names) {shared_ptr<FunctorType> f(boost::static_pointer_cast<FunctorType>(ClassFactory::instance().createShared(s))); f->initgl(); dispatcher.add(f);}
 		// _SETUP_DISPATCHER(stateFunctorNames,GlStateFunctor,stateDispatcher);
 		_SETUP_DISPATCHER(boundFunctorNames,GlBoundFunctor,boundDispatcher);
 		_SETUP_DISPATCHER(shapeFunctorNames,GlShapeFunctor,shapeDispatcher);
@@ -87,7 +87,7 @@ bool OpenGLRenderer::pointClipped(const Vector3r& p){
 void OpenGLRenderer::setBodiesDispInfo(){
 	if(scene->bodies->size()!=bodyDisp.size()) {
 		bodyDisp.resize(scene->bodies->size());
-		for (Body::id_t k=0; k<scene->bodies->size(); k++) bodyDisp[k].hidden=0;}
+		for (unsigned k=0; k<scene->bodies->size(); k++) bodyDisp[k].hidden=0;}
 	bool scaleRotations=(rotScale!=1.0);
 	bool scaleDisplacements=(dispScale!=Vector3r::Ones());
 	FOREACH(const shared_ptr<Body>& b, *scene->bodies){

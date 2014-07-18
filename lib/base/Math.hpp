@@ -8,24 +8,98 @@
 	typedef double Real;
 #endif
 
-#include<limits>
-#include<cstdlib>
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <typeinfo>
+#include <utility>
+#include <vector>
 
-// disable optimization which are "unsafe":
-// eigen objects cannot be passed by-value, otherwise they will no be aligned
+using std::endl;
+using std::cout;
+using std::cerr;
+using std::vector;
+using std::string;
+using std::list;
+using std::pair;
+using std::min;
+using std::max;
+using std::set;
+using std::map;
+using std::type_info;
+using std::ifstream;
+using std::ofstream;
+using std::runtime_error;
+using std::logic_error;
+using std::invalid_argument;
+using std::ios;
+using std::ios_base;
+using std::fstream;
+using std::ostream;
+using std::ostringstream;
+using std::istringstream;
+using std::swap;
+using std::make_pair;
 
-#define EIGEN_DONT_VECTORIZE
-#define EIGEN_DONT_ALIGN
-#define EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
-#define EIGEN_NO_DEBUG
+#include <boost/lexical_cast.hpp>
+#include <boost/python.hpp>
+#include <boost/python/object.hpp>
+#include <boost/version.hpp>
+#include <boost/any.hpp>
+#include <boost/type_traits.hpp>
+#include <boost/preprocessor.hpp>
+#include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/foreach.hpp>
+#include <boost/tuple/tuple.hpp>
+#include <boost/filesystem/convenience.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/exception.hpp>
+#include <boost/numeric/conversion/bounds.hpp>
 
-#include<Eigen/Core>
-#include<Eigen/Geometry>
-#include<Eigen/QR>
-#include<Eigen/LU>
-#include<Eigen/SVD>
-#include<Eigen/Eigenvalues>
-#include<float.h>
+using boost::shared_ptr;
+
+#ifndef FOREACH
+	#define FOREACH BOOST_FOREACH
+#endif
+
+#ifndef YADE_PTR_CAST
+	#define YADE_PTR_CAST boost::static_pointer_cast
+#endif
+
+#ifndef YADE_CAST
+	#define YADE_CAST static_cast
+#endif
+
+#ifndef YADE_PTR_DYN_CAST
+	#define YADE_PTR_DYN_CAST boost::dynamic_pointer_cast
+#endif
+
+#define EIGEN_DONT_PARALLELIZE
+
+#ifdef YADE_MASK_ARBITRARY
+	#include <bitset>
+#endif
+
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/QR>
+#include <Eigen/LU>
+#include <Eigen/SVD>
+#include <Eigen/Eigenvalues>
+#include <float.h>
 
 // templates of those types with single parameter are not possible, use macros for now
 #define VECTOR2_TEMPLATE(Scalar) Eigen::Matrix<Scalar,2,1>
@@ -209,11 +283,33 @@ class Se3
 template<typename Scalar> Scalar unitVectorsAngle(const VECTOR3_TEMPLATE(Scalar)& a, const VECTOR3_TEMPLATE(Scalar)& b){ return acos(a.dot(b)); }
 // operators
 
+
+/*
+ * Mask
+ */
+#ifdef YADE_MASK_ARBITRARY
+typedef std::bitset<YADE_MASK_ARBITRARY_SIZE> mask_t;
+bool operator==(const mask_t& g, int i);
+bool operator==(int i, const mask_t& g);
+bool operator!=(const mask_t& g, int i);
+bool operator!=(int i, const mask_t& g);
+mask_t operator&(const mask_t& g, int i);
+mask_t operator&(int i, const mask_t& g);
+mask_t operator|(const mask_t& g, int i);
+mask_t operator|(int i, const mask_t& g);
+bool operator||(const mask_t& g, bool b);
+bool operator||(bool b, const mask_t& g);
+bool operator&&(const mask_t& g, bool b);
+bool operator&&(bool b, const mask_t& g);
+#else
+typedef int mask_t;
+#endif
+
+
 /*
  * typedefs
  */
 typedef Se3<Real> Se3r;
-
 
 /*
  * Serialization of math classes
@@ -312,6 +408,15 @@ void serialize(Archive & ar, Matrix6r & m, const unsigned int version){
 	   BOOST_SERIALIZATION_NVP(m40) & BOOST_SERIALIZATION_NVP(m41) & BOOST_SERIALIZATION_NVP(m42) & BOOST_SERIALIZATION_NVP(m43) & BOOST_SERIALIZATION_NVP(m44) & BOOST_SERIALIZATION_NVP(m45) &
 	   BOOST_SERIALIZATION_NVP(m50) & BOOST_SERIALIZATION_NVP(m51) & BOOST_SERIALIZATION_NVP(m52) & BOOST_SERIALIZATION_NVP(m53) & BOOST_SERIALIZATION_NVP(m54) & BOOST_SERIALIZATION_NVP(m55);
 }
+
+#ifdef YADE_MASK_ARBITRARY
+template<class Archive>
+void serialize(Archive & ar, mask_t& v, const unsigned int version){
+	std::string str = v.to_string();
+	ar & BOOST_SERIALIZATION_NVP(str);
+	v = mask_t(str);
+}
+#endif
 
 } // namespace serialization
 } // namespace boost

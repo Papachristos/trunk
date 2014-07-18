@@ -59,7 +59,7 @@ bool InteractionContainer::erase(Body::id_t id1,Body::id_t id2, int linPos){
 	
 	const shared_ptr<Body>& b1((*bodies)[id1]);
 	const shared_ptr<Body>& b2((*bodies)[id2]);
-	
+	LOG_DEBUG("InteractionContainer erase intrs id1=" << id1 << " id2=" << id2);
 	int linIx=-1;
 	if(!b1) linIx=linPos;
 	else {
@@ -67,6 +67,7 @@ bool InteractionContainer::erase(Body::id_t id1,Body::id_t id2, int linPos){
 		if(I==b1->intrs.end()) linIx=linPos;
 		else {
 			linIx=I->second->linIx;
+			LOG_DEBUG("InteractionContainer linIx=" << linIx << " linPos=" << linPos);
 			assert(linIx==linPos);
 			//erase from body, we also erase from linIntrs below
 			b1->intrs.erase(I);
@@ -79,7 +80,7 @@ bool InteractionContainer::erase(Body::id_t id1,Body::id_t id2, int linPos){
 		}
 	}
 	if(linIx<0) {
-		LOG_ERROR("InteractionContainer::erase: attempt to delete interaction with a deleted body (the definition of linPos in the call to erase() should fix the problem) for  ##"+lexical_cast<string>(id1)+"+"+lexical_cast<string>(id2));
+		LOG_ERROR("InteractionContainer::erase: attempt to delete interaction with a deleted body (the definition of linPos in the call to erase() should fix the problem) for  ##"+boost::lexical_cast<string>(id1)+"+"+boost::lexical_cast<string>(id2));
 		return false;}
 	// iid is not the last element; we have to move last one to its place
 	if (linIx<(int)currSize-1) {

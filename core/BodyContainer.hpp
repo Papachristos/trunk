@@ -5,12 +5,6 @@
 #pragma once
 
 #include<yade/lib/serialization/Serializable.hpp>
-
-#include<boost/foreach.hpp>
-#ifndef FOREACH
-#  define FOREACH BOOST_FOREACH
-#endif
-
 #include<boost/tuple/tuple.hpp>
 
 class Body;
@@ -34,9 +28,8 @@ Any alternative implementation should use the same API.
 class BodyContainer: public Serializable{
 	private:
 		typedef std::vector<shared_ptr<Body> > ContainerT;
+		typedef std::map<Body::id_t,Se3r> MemberMap;
 		ContainerT body;
-		Body::id_t lowestFree;
-		Body::id_t findFreeId();
 	public:
 		friend class InteractionContainer;  // accesses the body vector directly
 		
@@ -55,25 +48,13 @@ class BodyContainer: public Serializable{
 			smart_iterator(const ContainerT::iterator& source) {(*this)=source;}
 			smart_iterator(const smart_iterator& source) {(*this)=source; end=source.end;}
 		};
-
-// 		typedef ContainerT::iterator iterator;
-// 		typedef ContainerT::const_iterator const_iterator;
 		typedef smart_iterator iterator;
 		typedef const smart_iterator const_iterator;
 
-		BodyContainer();
-		virtual ~BodyContainer();
+		BodyContainer() {};
+		virtual ~BodyContainer() {};
 		Body::id_t insert(shared_ptr<Body>&);
-		Body::id_t insert(shared_ptr<Body>& b, Body::id_t id);
-	
-		// mimick some STL api
 		void clear();
-		// by using simple vector<>::iterator's, we can hit null bodies 
-// 		iterator begin() { return body.begin(); }
-// 		iterator end() { return body.end(); }
-// 		const_iterator begin() const { return body.begin(); }
-// 		const_iterator end() const { return body.end(); }
-// 		//with smart iterators
 		iterator begin() {
 			iterator temp(body.begin()); temp.end=body.end();
 			return (body.begin()==body.end() || *temp)?temp:++temp;}
@@ -86,7 +67,7 @@ class BodyContainer: public Serializable{
 		const shared_ptr<Body>& operator[](unsigned int id) const { return body[id]; }
 
 		bool exists(Body::id_t id) const { return (id>=0) && ((size_t)id<body.size()) && ((bool)body[id]); }
-		bool erase(Body::id_t id);
+		bool erase(Body::id_t id, bool eraseClumpMembers);
 		
 		REGISTER_CLASS_AND_BASE(BodyContainer,Serializable);
 		REGISTER_ATTRIBUTES(Serializable,(body));

@@ -1,8 +1,7 @@
 #include<yade/core/Clump.hpp>
 #include<yade/core/Scene.hpp>
 #include<yade/pkg/dem/Integrator.hpp>
-#include<boost/python.hpp>
-using namespace boost;
+
 #ifdef YADE_OPENMP
   #include<omp.h>
 #endif
@@ -106,8 +105,8 @@ stateVector& Integrator::getSceneStateDot(void){
 				b->shape->cast<Clump>().addForceTorqueFromMembers(b->state.get(),scene,force,moment);
 				#ifdef YADE_OPENMP
 				//it is safe here, since only one thread will read/write
-				scene->forces.getTorqueUnsynced(id)+=moment;
-				scene->forces.getForceUnsynced(id)+=force;
+				scene->forces.addTorqueUnsynced(id,moment);
+				scene->forces.addForceUnsynced(id,force);
 				#else
 				scene->forces.addTorque(id,moment);
 				scene->forces.addForce(id,force);
@@ -316,7 +315,7 @@ void Integrator::ensureSync()
 void Integrator::saveMaximaDisplacement(const shared_ptr<Body>& b){
 	if (!b->bound) return;//clumps for instance, have no bounds, hence not saved
 	Vector3r disp=b->state->pos-b->bound->refPos;
-	Real maxDisp=max(abs(disp[0]),max(abs(disp[1]),abs(disp[2])));
+	Real maxDisp=max(std::abs(disp[0]),max(std::abs(disp[1]),std::abs(disp[2])));
 	if (!maxDisp || maxDisp<b->bound->sweepLength) {/*b->bound->isBounding = (updatingDispFactor>0 && (updatingDispFactor*maxDisp)<b->bound->sweepLength);*/
 	maxDisp=0.5;//not 0, else it will be seen as "not updated" by the collider, but less than 1 means no colliding
 	}
@@ -325,25 +324,25 @@ void Integrator::saveMaximaDisplacement(const shared_ptr<Body>& b){
 	maxVelocitySq=max(maxVelocitySq,maxDisp);
 }
 
-void Integrator::slaves_set(const python::list& slaves2){
+void Integrator::slaves_set(const boost::python::list& slaves2){
 std::cout<<"Adding slaves";
-	int len=python::len(slaves2);
+	int len=boost::python::len(slaves2);
 	slaves.clear();
 	for(int i=0; i<len; i++){
-		python::extract<std::vector<shared_ptr<Engine> > > serialGroup(slaves2[i]);
+		boost::python::extract<std::vector<shared_ptr<Engine> > > serialGroup(slaves2[i]);
 		if (serialGroup.check()){ slaves.push_back(serialGroup()); continue; }
-		python::extract<shared_ptr<Engine> > serialAlone(slaves2[i]);
+		boost::python::extract<shared_ptr<Engine> > serialAlone(slaves2[i]);
 		if (serialAlone.check()){ vector<shared_ptr<Engine> > aloneWrap; aloneWrap.push_back(serialAlone()); slaves.push_back(aloneWrap); continue; }
 		PyErr_SetString(PyExc_TypeError,"Engines that are given to Integrator should be in two cases (a) in an ordered group, (b) alone engines");
-		python::throw_error_already_set();
+		boost::python::throw_error_already_set();
 	}
 }
 
-python::list Integrator::slaves_get(){
-	python::list ret;
+boost::python::list Integrator::slaves_get(){
+	boost::python::list ret;
 	FOREACH(vector<shared_ptr<Engine > >& grp, slaves){
-		if(grp.size()==1) ret.append(python::object(grp[0]));
-		else ret.append(python::object(grp));
+		if(grp.size()==1) ret.append(boost::python::object(grp[0]));
+		else ret.append(boost::python::object(grp));
 	}
 	return ret;
 }

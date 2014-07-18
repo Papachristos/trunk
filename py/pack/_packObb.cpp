@@ -2,20 +2,9 @@
 // the code written after http://www.amillionpixels.us/bestfitobb.cpp
 // which is MIT-licensed
 
-#include<boost/python.hpp>
-#include<boost/foreach.hpp>
-#include<boost/python/object.hpp>
-#include<boost/version.hpp>
 #include<yade/lib/base/Logging.hpp>
 #include<yade/lib/base/Math.hpp>
 #include<yade/lib/pyutil/doc_opts.hpp>
-
-#include<vector>
-#include<stdexcept>
-using namespace boost;
-#ifndef FOREACH
-	#define FOREACH BOOST_FOREACH
-#endif
 
 // compute minimum bounding for a cloud of points
 
@@ -63,19 +52,19 @@ void bestFitOBB(const std::vector<Vector3r>& pts, Vector3r& center, Vector3r& ha
 	}
 }
 
-python::tuple bestFitOBB_py(const python::tuple& _pts){
-	int l=python::len(_pts);
+boost::python::tuple bestFitOBB_py(const boost::python::tuple& _pts){
+	int l=boost::python::len(_pts);
 	if(l<=1) throw std::runtime_error("Cloud must have at least 2 points.");
 	std::vector<Vector3r> pts; pts.resize(l);
-	for(int i=0; i<l; i++) pts[i]=python::extract<Vector3r>(_pts[i]);
+	for(int i=0; i<l; i++) pts[i]=boost::python::extract<Vector3r>(_pts[i]);
 	Quaternionr rot; Vector3r halfSize, center;
 	bestFitOBB(pts,center,halfSize,rot);
-	return python::make_tuple(center,halfSize,rot);
+	return boost::python::make_tuple(center,halfSize,rot);
 }
 
 BOOST_PYTHON_MODULE(_packObb){
 	YADE_SET_DOCSTRING_OPTS;
-	python::scope().attr("__doc__")="Computation of oriented bounding box for cloud of points.";
-	python::def("cloudBestFitOBB",bestFitOBB_py,"Return (Vector3 center, Vector3 halfSize, Quaternion orientation) of\nbest-fit oriented bounding-box for given tuple of points\n(uses brute-force velome minimization, do not use for very large clouds).");
+	boost::python::scope().attr("__doc__")="Computation of oriented bounding box for cloud of points.";
+	boost::python::def("cloudBestFitOBB",bestFitOBB_py,"Return (Vector3 center, Vector3 halfSize, Quaternion orientation) of\nbest-fit oriented bounding-box for given tuple of points\n(uses brute-force velome minimization, do not use for very large clouds).");
 };
 

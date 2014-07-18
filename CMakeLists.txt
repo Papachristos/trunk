@@ -14,14 +14,13 @@
 #  ENABLE_GL2PS: enable GL2PS-option (ON by default)
 #  ENABLE_LINSOLV: enable LINSOLV-option (ON by default)
 #  ENABLE_PFVFLOW: enable PFVFLOW-option, FlowEngine (ON by default)
-#<<<<<<< HEAD
-#  ENABLE_LBMFLOW: enable LBMFLOW-option, LBM_ENGINE (OFF by default)
-#=======
+#  ENABLE_LBMFLOW: enable LBMFLOW-option, LBM_ENGINE (ON by default)
 #  ENABLE_SPH: enable SPH-option, Smoothed Particle Hydrodynamics (OFF by default, experimental)
-#>>>>>>> Implement experimental SPH-model
+#  ENABLE_LIQMIGRATION: enable LIQMIGRATION-option, see [Mani2013] for details (OFF by default)
+#  ENABLE_MASK_ARBITRARY: enable MASK_ARBITRARY option (OFF by default)
 #  runtimePREFIX: used for packaging, when install directory is not the same is runtime directory (/usr/local by default)
 #  CHUNKSIZE: set >1, if you want several sources to be compiled at once. Increases compilation speed and RAM-consumption during it (1 by default).
-
+#  VECTORIZE: enables vectorization and alignment in Eigen3 library, experimental (OFF by default)
 
 project(Yade C CXX)
 cmake_minimum_required(VERSION 2.8)
@@ -63,7 +62,11 @@ IF ("${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")
 ENDIF()
 
 #===========================================================
-ADD_DEFINITIONS(" -DYADE_PTR_CAST=static_pointer_cast -DYADE_CAST=static_cast ")
+
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++0x")
+
+#===========================================================
+
 IF (CMAKE_CXX_FLAGS)
   #If flags are set, add only neccessary flags
   IF (DEBUG)
@@ -89,7 +92,10 @@ ENDIF (CMAKE_CXX_FLAGS)
 #===========================================================
 # Add possibility to use local boost installation (e.g. -DLocalBoost=1.46.1)
 
-FIND_PACKAGE(Boost ${LocalBoost} COMPONENTS python thread date_time filesystem iostreams regex serialization system REQUIRED)
+IF ( NOT LocalBoost )
+  SET(LocalBoost "1.35.0") # Minimal required Boost version
+ENDIF ( NOT LocalBoost )
+FIND_PACKAGE(Boost ${LocalBoost} COMPONENTS python thread filesystem iostreams regex serialization system date_time REQUIRED)
 INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
 # for checking purpose
 MESSAGE("--   Boost_VERSION: " ${Boost_VERSION})
@@ -121,15 +127,29 @@ OPTION(ENABLE_CGAL "Enable CGAL" ${DEFAULT})
 OPTION(ENABLE_GL2PS "Enable GL2PS" ${DEFAULT})
 OPTION(ENABLE_LINSOLV "Enable direct solver for the flow engines (experimental)" ${DEFAULT})
 OPTION(ENABLE_PFVFLOW "Enable flow engine (experimental)" ${DEFAULT})
-OPTION(ENABLE_LBMFLOW "Enable LBM engine (very experimental)" OFF)
 OPTION(ENABLE_SPH "Enable SPH" OFF)
+OPTION(ENABLE_LBMFLOW "Enable LBM engine (very experimental)" ON)
+OPTION(ENABLE_LIQMIGRATION "Enable liquid control (very experimental), see [Mani2013] for details" OFF)
+OPTION(ENABLE_MASK_ARBITRARY "Enable arbitrary precision of bitmask variables (only Body::groupMask yet implemented) (experimental). Use -DMASK_ARBITRARY_SIZE=int to set number of used bits (256 by default)" OFF)
 
 #===========================================================
 # Use Eigen3 by default
 IF (EIGEN3_FOUND)
   INCLUDE_DIRECTORIES(${EIGEN3_INCLUDE_DIR})
-  MESSAGE(STATUS "Found Eigen3")
-  SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} Eigen3")
+  MESSAGE(STATUS "Found Eigen3, version: ${EIGEN3_VERSION}")
+  
+  # Minimal required version 3.2.1
+  IF ((${EIGEN3_MAJOR_VERSION} LESS 2) OR ((${EIGEN3_MAJOR_VERSION} EQUAL 2) AND (${EIGEN3_MINOR_VERSION} LESS 1)))
+    MESSAGE(FATAL_ERROR "Minimal required Eigen3 version is 3.2.1, please update Eigen3!")
+  ENDIF ((${EIGEN3_MAJOR_VERSION} LESS 2) OR ((${EIGEN3_MAJOR_VERSION} EQUAL 2) AND (${EIGEN3_MINOR_VERSION} LESS 1)))
+
+  IF (NOT VECTORIZE)
+    MESSAGE(STATUS "Disable vectorization")
+    ADD_DEFINITIONS("-DEIGEN_DONT_VECTORIZE -DEIGEN_DONT_ALIGN -DEIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT")
+  ELSE (NOT VECTORIZE)
+    MESSAGE(STATUS "Enable vectorization")
+  ENDIF (NOT VECTORIZE)
+  
 ENDIF(EIGEN3_FOUND)
 #===========================================================
 INCLUDE_DIRECTORIES(${BZIP2_INCLUDE_DIR})
@@ -144,8 +164,6 @@ ELSE((Boost_MAJOR_VERSION EQUAL 1) OR (Boost_MAJOR_VERSION GREATER 1) AND
     ((Boost_MINOR_VERSION EQUAL 53) OR (Boost_MINOR_VERSION GREATER 53)))
   SET(DISABLED_FEATS "${DISABLED_FEATS} Odeint")
   MESSAGE(STATUS "Boost Odeint can be enabled, only if Boost>=1.53 is used")
-  MESSAGE(STATUS ${Boost_MAJOR_VERSION})
-  MESSAGE(STATUS ${Boost_MINOR_VERSION})
 ENDIF((Boost_MAJOR_VERSION EQUAL 1) OR (Boost_MAJOR_VERSION GREATER 1) AND
      ((Boost_MINOR_VERSION EQUAL 53) OR (Boost_MINOR_VERSION GREATER 53)))
 #===========================================================
@@ -155,7 +173,6 @@ IF(ENABLE_VTK)
     INCLUDE_DIRECTORIES(${VTK_INCLUDE_DIRS})
     LINK_DIRECTORIES( ${VTK_LIBRARY_DIRS} )
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DYADE_VTK")
-    SET(features "${features} vtk")
     MESSAGE(STATUS "Found VTK")
     SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} VTK")
   ELSE(VTK_FOUND)
@@ -173,7 +190,6 @@ IF(ENABLE_OPENMP)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DYADE_OPENMP ${OpenMP_CXX_FLAGS}")
     MESSAGE(STATUS "Found OpenMP")
     SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} OpenMP")
-    SET(features "${features} openmp")
   ELSE(OPENMP_FOUND)
     MESSAGE(STATUS "OpenMP NOT found")
     SET(ENABLE_OPENMP OFF)
@@ -193,7 +209,6 @@ IF(ENABLE_GTS)
     INCLUDE_DIRECTORIES(${GLIB2_INCLUDE_DIRS})
     MESSAGE(STATUS "Found GTS")
     SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} GTS")
-    SET(features "${features} gts")
   ELSE(GTS_FOUND AND GLIB2_FOUND)
     MESSAGE(STATUS "GTS NOT found")
     SET(DISABLED_FEATS "${DISABLED_FEATS} GTS")
@@ -212,7 +227,6 @@ IF(ENABLE_GUI)
   IF(QT4_FOUND AND OPENGL_FOUND AND GLUT_FOUND AND GLIB2_FOUND AND QGLVIEWER_FOUND)
     SET(GUI_LIBS ${GLUT_LIBRARY} ${OPENGL_LIBRARY} ${QGLVIEWER_LIBRARIES})
     SET(GUI_SRC_LIB "lib/opengl/GLUtils.cpp")
-    SET(features "${features} qt4 opengl")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DYADE_OPENGL")
     INCLUDE_DIRECTORIES(${GLIB2_INCLUDE_DIRS})
     INCLUDE_DIRECTORIES(${QT_INCLUDES})
@@ -253,9 +267,9 @@ IF(ENABLE_CGAL)
 
     IF(ENABLE_PFVFLOW)
       SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DFLOW_ENGINE")
-      SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} PFVflow")
+      SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} PFVFLOW")
     ELSE(ENABLE_PFVFLOW)
-      SET(DISABLED_FEATS "${DISABLED_FEATS} PFVflow")
+      SET(DISABLED_FEATS "${DISABLED_FEATS} PFVFLOW")
     ENDIF(ENABLE_PFVFLOW)
 
   ELSE(CGAL_FOUND AND GMP_FOUND AND (NOT("${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_ARG1}" MATCHES ".*clang")))
@@ -263,7 +277,7 @@ IF(ENABLE_CGAL)
     SET(DISABLED_FEATS "${DISABLED_FEATS} CGAL")
     SET(ENABLE_CGAL OFF)
     IF(ENABLE_PFVFLOW)
-      SET(DISABLED_FEATS "${DISABLED_FEATS} PFVflow")
+      SET(DISABLED_FEATS "${DISABLED_FEATS} PFVFLOW")
       MESSAGE(STATUS "CGAL NOT found: PFVFLOW disabled")
     ENDIF(ENABLE_PFVFLOW)
 
@@ -283,14 +297,14 @@ IF(ENABLE_LINSOLV)
     MESSAGE(STATUS "Found Cholmod")
     MESSAGE(STATUS "Found OpenBlas")
     MESSAGE(STATUS "Found Metis")
-    SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} LinSolv")
+    SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} LINSOLV")
   ELSE(CHOLMOD_FOUND AND OPENBLAS_FOUND AND METIS_FOUND)
     MESSAGE(STATUS "Missing dependency for LINSOLV, disabled")
-    SET(DISABLED_FEATS "${DISABLED_FEATS} LinSolv")
+    SET(DISABLED_FEATS "${DISABLED_FEATS} LINSOLV")
     SET(ENABLE_LINSOLV OFF)
   ENDIF(CHOLMOD_FOUND AND OPENBLAS_FOUND AND METIS_FOUND)
 ELSE(ENABLE_LINSOLV)
-  SET(DISABLED_FEATS "${DISABLED_FEATS} LinSolv")
+  SET(DISABLED_FEATS "${DISABLED_FEATS} LINSOLV")
 ENDIF(ENABLE_LINSOLV)
 #===============================================
 IF(ENABLE_SPH)
@@ -299,6 +313,13 @@ IF(ENABLE_SPH)
 ELSE(ENABLE_SPH)
   SET(DISABLED_FEATS "${DISABLED_FEATS} SPH")
 ENDIF(ENABLE_SPH)
+#===============================================
+IF(ENABLE_LIQMIGRATION)
+  ADD_DEFINITIONS("-DYADE_LIQMIGRATION")
+  SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} LIQMIGRATION")
+ELSE(ENABLE_LIQMIGRATION)
+  SET(DISABLED_FEATS "${DISABLED_FEATS} LIQMIGRATION")
+ENDIF(ENABLE_LIQMIGRATION)
 #===============================================
 IF(ENABLE_GL2PS)
   FIND_PACKAGE(GL2PS)
@@ -318,8 +339,17 @@ ELSE(ENABLE_GL2PS)
 ENDIF(ENABLE_GL2PS)
 
 INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIRS})
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/extra/floating_point_utilities_v3)
 INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR})
+
+#===========================================================
+# floating_point_utilities_v3 are already in Boost included
+# Use embedded copy only if Boost older than 1.47.0
+
+IF((Boost_MINOR_VERSION LESS 47) AND (Boost_MAJOR_VERSION EQUAL 1))
+  MESSAGE(STATUS "Boost version is less than 1.47, using embedded version of floating_point_utilities_v3")
+  MESSAGE(STATUS "Consider updating boost or system, as this embedded library will be removed soon")
+  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/extra/floating_point_utilities_v3)
+ENDIF((Boost_MINOR_VERSION LESS 47) AND (Boost_MAJOR_VERSION EQUAL 1))
 
 #===========================================================
 IF(ENABLE_LBMFLOW)
@@ -329,6 +359,18 @@ IF(ENABLE_LBMFLOW)
 ELSE(ENABLE_LBMFLOW)
   SET(DISABLED_FEATS "${DISABLED_FEATS} LBMFLOW")
 ENDIF(ENABLE_LBMFLOW)
+#===============================================
+IF(ENABLE_MASK_ARBITRARY)
+  ADD_DEFINITIONS("-DYADE_MASK_ARBITRARY")
+  SET(CONFIGURED_FEATS "${CONFIGURED_FEATS} MASK_ARBITRARY")
+  IF(NOT MASK_ARBITRARY_SIZE)
+    SET(MASK_ARBITRARY_SIZE "256")
+  ENDIF(NOT MASK_ARBITRARY_SIZE)
+  ADD_DEFINITIONS(-DYADE_MASK_ARBITRARY_SIZE=${MASK_ARBITRARY_SIZE})
+  MESSAGE("MASK_ARBITRARY_SIZE = ${MASK_ARBITRARY_SIZE}")
+ELSE(ENABLE_MASK_ARBITRARY)
+  SET(DISABLED_FEATS "${DISABLED_FEATS} MASK_ARBITRARY")
+ENDIF(ENABLE_MASK_ARBITRARY)
 
 #===========================================================
 
@@ -418,8 +460,9 @@ find_python_module(Tkinter REQUIRED)
 #===========================================================
 
 ADD_LIBRARY(boot SHARED ${CMAKE_CURRENT_SOURCE_DIR}/core/main/pyboot.cpp)
-SET_TARGET_PROPERTIES(boot PROPERTIES PREFIX "")
-TARGET_LINK_LIBRARIES(yade ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} ${LINKLIBS} ${LOKI_LIBRARY} -lrt)
+SET_TARGET_PROPERTIES(boot PROPERTIES PREFIX "" LINK_FLAGS "-Wl,--as-needed" )
+TARGET_LINK_LIBRARIES(yade ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} ${LINKLIBS} -lrt)
+SET_TARGET_PROPERTIES(yade  PROPERTIES LINK_FLAGS "-Wl,--as-needed" )
 TARGET_LINK_LIBRARIES(boot yade)
 
 IF(ENABLE_VTK)
@@ -456,6 +499,17 @@ CONFIGURE_FILE(core/main/main.py.in "${CMAKE_BINARY_DIR}/bins/yade${SUFFIX}")
 CONFIGURE_FILE(py/config.py.in "${CMAKE_BINARY_DIR}/config.py")
 CONFIGURE_FILE(py/__init__.py.in "${CMAKE_BINARY_DIR}/__init__.py")
 
+#===========================================================
+# Create header files for PFV from FlowEngine.hpp.in-template.
+# All @TEMPLATE_FLOW_NAME@ are replacing by a given names
+
+SET (TEMPLATE_FLOW_NAMES DFNFlowEngineT DummyFlowEngineT FlowEngineT FlowEngine_PeriodicInfo SoluteFlowEngineT)
+FOREACH(TF ${TEMPLATE_FLOW_NAMES})
+  SET (TEMPLATE_FLOW_NAME ${TF})
+  CONFIGURE_FILE(pkg/pfv/FlowEngine.hpp.in "${CMAKE_BINARY_DIR}/pkg/pfv/FlowEngine_${TF}.hpp" @ONLY)
+  CONFIGURE_FILE(pkg/pfv/FlowEngine.ipp.in "${CMAKE_BINARY_DIR}/pkg/pfv/FlowEngine_${TF}.ipp" @ONLY)
+ENDFOREACH(TF)
+INCLUDE_DIRECTORIES("${CMAKE_BINARY_DIR}/pkg/pfv/")
 #===========================================================
 
 INSTALL(PROGRAMS "${CMAKE_BINARY_DIR}/bins/yade${SUFFIX}-batch" DESTINATION ${YADE_EXEC_PATH}/)

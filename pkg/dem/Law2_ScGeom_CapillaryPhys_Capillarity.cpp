@@ -16,18 +16,12 @@
 #include <yade/pkg/dem/ScGeom.hpp>
 
 #include <yade/pkg/dem/CapillaryPhys.hpp>
-#include <yade/pkg/dem/Ip2_FrictMat_FrictMat_MindlinCapillaryPhys.hpp>
+#include <yade/pkg/dem/HertzMindlin.hpp>
 #include <yade/core/Omega.hpp>
 #include <yade/core/Scene.hpp>
 #include <yade/lib/base/Math.hpp>
 
-
-#include <iostream>
-#include <fstream>
-
 YADE_PLUGIN((Law2_ScGeom_CapillaryPhys_Capillarity));
-
-using namespace std;
 
 void Law2_ScGeom_CapillaryPhys_Capillarity::postLoad(Law2_ScGeom_CapillaryPhys_Capillarity&){
 

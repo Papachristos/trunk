@@ -12,7 +12,10 @@
 #include<QGLViewer/qglviewer.h>
 #include<QGLViewer/manipulatedFrame.h>
 #include<QGLViewer/constraint.h>
-#include<set>
+
+using std::setw;
+using std::setfill;
+using std::setprecision;
 
 /*! Class handling user interaction with the openGL rendering of simulation.
  *
@@ -54,7 +57,7 @@ class GLViewer : public QGLViewer
 		int manipulatedClipPlane;
 		set<int> boundClipPlanes;
 		shared_ptr<qglviewer::LocalConstraint> xyPlaneConstraint;
-		string strBoundGroup(){string ret;FOREACH(int i, boundClipPlanes) ret+=" "+lexical_cast<string>(i+1);return ret;}
+		string strBoundGroup(){string ret;FOREACH(int i, boundClipPlanes) ret+=" "+boost::lexical_cast<string>(i+1);return ret;}
 		boost::posix_time::ptime last_user_event;
 
      public:

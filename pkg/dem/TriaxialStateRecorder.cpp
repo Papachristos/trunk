@@ -14,7 +14,6 @@
 #include<yade/pkg/common/Sphere.hpp>
 #include <yade/core/Omega.hpp>
 #include <yade/core/Scene.hpp>
-#include <boost/lexical_cast.hpp>
 #include <yade/pkg/dem/ScGeom.hpp>
 #include <yade/pkg/dem/FrictPhys.hpp>
 #include <yade/pkg/dem/Shop.hpp>
@@ -57,16 +56,16 @@ void TriaxialStateRecorder::action ()
 	}
 	porosity = ( V - Vs ) /V;
 	
-	out << lexical_cast<string> ( scene->iter ) << " "
- 	<< lexical_cast<string> ( triaxialStressController->stress[triaxialStressController->wall_right][0] ) << " "
- 	<< lexical_cast<string> ( triaxialStressController->stress[triaxialStressController->wall_top][1] ) << " "
- 	<< lexical_cast<string> ( triaxialStressController->stress[triaxialStressController->wall_front][2] ) << " "
- 	<< lexical_cast<string> ( triaxialStressController->strain[0] ) << " "
- 	<< lexical_cast<string> ( triaxialStressController->strain[1] ) << " "
- 	<< lexical_cast<string> ( triaxialStressController->strain[2] ) << " "
- 	<< lexical_cast<string> ( triaxialStressController->ComputeUnbalancedForce () ) << " "
- 	<< lexical_cast<string> ( porosity ) << " "
- 	<< lexical_cast<string> ( Shop::kineticEnergy() )
+	out << boost::lexical_cast<string> ( scene->iter ) << " "
+ 	<< boost::lexical_cast<string> ( triaxialStressController->stress[triaxialStressController->wall_right][0] ) << " "
+ 	<< boost::lexical_cast<string> ( triaxialStressController->stress[triaxialStressController->wall_top][1] ) << " "
+ 	<< boost::lexical_cast<string> ( triaxialStressController->stress[triaxialStressController->wall_front][2] ) << " "
+ 	<< boost::lexical_cast<string> ( triaxialStressController->strain[0] ) << " "
+ 	<< boost::lexical_cast<string> ( triaxialStressController->strain[1] ) << " "
+ 	<< boost::lexical_cast<string> ( triaxialStressController->strain[2] ) << " "
+ 	<< boost::lexical_cast<string> ( triaxialStressController->ComputeUnbalancedForce () ) << " "
+ 	<< boost::lexical_cast<string> ( porosity ) << " "
+ 	<< boost::lexical_cast<string> ( Shop::kineticEnergy() )
  	<< endl;
 }
 

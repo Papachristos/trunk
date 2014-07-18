@@ -17,17 +17,26 @@ void BoundDispatcher::action()
 	updateScenePtr();
 	shared_ptr<BodyContainer>& bodies = scene->bodies;
 	const long numBodies=(long)bodies->size();
-	//#pragma omp parallel for
+	#pragma omp parallel for num_threads(ompThreads>0 ? min(ompThreads,omp_get_max_threads()) : omp_get_max_threads())
 	for(int id=0; id<numBodies; id++){
 		if(!bodies->exists(id)) continue; // don't delete this check  - Janek
 		const shared_ptr<Body>& b=(*bodies)[id];
+		processBody(b);
+	}
+// 	With -j4, this update takes more time that the dispatching in itslef, and it is quite useless: commented out
+// 	scene->updateBound();
+}
+
+void BoundDispatcher::processBody(const shared_ptr<Body>& b)
+{
+// 	const shared_ptr<Body>& b=(*bodies)[id];
 		shared_ptr<Shape>& shape=b->shape;
-		if(!shape || !b->isBounded()) continue;
+		if(!b->isBounded() || !shape) return;
 		if(b->bound) {
 			Real& sweepLength = b->bound->sweepLength;
 			if (targetInterv>=0) {
 				Vector3r disp = b->state->pos-b->bound->refPos;
-				Real dist = max(abs(disp[0]),max(abs(disp[1]),abs(disp[2])));
+				Real dist = max(std::abs(disp[0]),max(std::abs(disp[1]),std::abs(disp[2])));
 				if (dist){
 					Real newLength = dist*targetInterv/(scene->iter-b->bound->lastUpdateIter);
 					newLength = max(0.9*sweepLength,newLength);//don't decrease size too fast to prevent time consuming oscillations
@@ -36,12 +45,12 @@ void BoundDispatcher::action()
 			} else sweepLength=sweepDist;
 		} 
 		#ifdef BV_FUNCTOR_CACHE
-		if(!shape->boundFunctor){ shape->boundFunctor=this->getFunctor1D(shape); if(!shape->boundFunctor) continue; }
+		if(!shape->boundFunctor){ shape->boundFunctor=this->getFunctor1D(shape); if(!shape->boundFunctor) return; }
 		shape->boundFunctor->go(shape,b->bound,b->state->se3,b.get());
 		#else
 		operator()(shape,b->bound,b->state->se3,b.get());
 		#endif
-		if(!b->bound) continue; // the functor did not create new bound
+		if(!b->bound) return; // the functor did not create new bound
 		b->bound->refPos=b->state->pos;
 		b->bound->lastUpdateIter=scene->iter;
 		const Real& sweepLength = b->bound->sweepLength;
@@ -51,8 +60,6 @@ void BoundDispatcher::action()
 			aabb->max+=Vector3r(sweepLength,sweepLength,sweepLength);
 		}
 	}
-	scene->updateBound();
-}
 
 
 /********************************************************************
@@ -161,7 +168,7 @@ void IPhysDispatcher::action()
 			if(interaction->geom){
 				shared_ptr<Body>& b1 = (*bodies)[interaction->getId1()];
 				shared_ptr<Body>& b2 = (*bodies)[interaction->getId2()];
-				bool hadPhys=interaction->phys;
+				bool hadPhys=(interaction->phys.get() != 0);
 				operator()(b1->material, b2->material, interaction);
 				assert(interaction->phys);
 				if(!hadPhys) interaction->iterMadeReal=scene->iter;

@@ -1,10 +1,6 @@
 // 2010 © Václav Šmilauer <eudoxos@arcig.cz>
 
 #include<yade/pkg/common/MatchMaker.hpp>
-#include<boost/foreach.hpp>
-#ifndef FOREACH
-	#define FOREACH BOOST_FOREACH
-#endif
 
 YADE_PLUGIN((MatchMaker));
 MatchMaker::~MatchMaker(){}
@@ -14,7 +10,7 @@ Real MatchMaker::operator()(int id1, int id2, Real val1, Real val2) const {
 		if(((int)m[0]==id1 && (int)m[1]==id2) || ((int)m[0]==id2 && (int)m[1]==id1)) return m[2];
 	}
 	// no match
-	if(fbNeedsValues && (isnan(val1) || isnan(val2))) throw std::invalid_argument("MatchMaker: no match for ("+lexical_cast<string>(id1)+","+lexical_cast<string>(id2)+"), and values required for algo computation '"+algo+"' not specified.");
+	if(fbNeedsValues && (isnan(val1) || isnan(val2))) throw std::invalid_argument("MatchMaker: no match for ("+boost::lexical_cast<string>(id1)+","+boost::lexical_cast<string>(id2)+"), and values required for algo computation '"+algo+"' not specified.");
 	return computeFallback(val1,val2);
 }
 

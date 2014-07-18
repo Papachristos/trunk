@@ -1,12 +1,6 @@
 // 2007 © Václav Šmilauer <eudoxos@arcig.cz>
 #include"Shop.hpp"
 
-#include<limits>
-
-#include<boost/filesystem/convenience.hpp>
-#include<boost/tokenizer.hpp>
-#include<boost/tuple/tuple.hpp>
-
 #include<yade/core/Scene.hpp>
 #include<yade/core/Body.hpp>
 #include<yade/core/Interaction.hpp>
@@ -26,7 +20,7 @@
 #include<yade/pkg/dem/NewtonIntegrator.hpp>
 #include<yade/pkg/dem/Ig2_Sphere_Sphere_ScGeom.hpp>
 #include<yade/pkg/dem/Ig2_Box_Sphere_ScGeom.hpp>
-#include<yade/pkg/dem/Ip2_FrictMat_FrictMat_FrictPhys.hpp>
+#include<yade/pkg/dem/FrictPhys.hpp>
 
 #include<yade/pkg/common/ForceResetter.hpp>
 
@@ -48,11 +42,6 @@
 	#include<yade/pkg/common/Gl1_NormPhys.hpp>
 #endif
 
-#include<boost/foreach.hpp>
-#ifndef FOREACH
-	#define FOREACH BOOST_FOREACH
-#endif
-
 CREATE_LOGGER(Shop);
 
 /*! Flip periodic cell by given number of cells.
@@ -67,8 +56,8 @@ Real Shop::RayleighWaveTimeStep(const shared_ptr<Scene> _rb){
 	FOREACH(const shared_ptr<Body>& b, *rb->bodies){
 		if(!b || !b->material || !b->shape) continue;
 		
-		shared_ptr<ElastMat> ebp=dynamic_pointer_cast<ElastMat>(b->material);
-		shared_ptr<Sphere> s=dynamic_pointer_cast<Sphere>(b->shape);
+		shared_ptr<ElastMat> ebp=YADE_PTR_DYN_CAST<ElastMat>(b->material);
+		shared_ptr<Sphere> s=YADE_PTR_DYN_CAST<Sphere>(b->shape);
 		if(!ebp || !s) continue;
 		
 		Real density=b->state->mass/((4/3.)*Mathr::PI*pow(s->radius,3));
@@ -118,7 +107,7 @@ shared_ptr<Interaction> Shop::createExplicitInteraction(Body::id_t id1, Body::id
 	IGeomDispatcher* geomMeta=NULL;
 	IPhysDispatcher* physMeta=NULL;
 	shared_ptr<Scene> rb=Omega::instance().getScene();
-	if(rb->interactions->find(Body::id_t(id1),Body::id_t(id2))!=0) throw runtime_error(string("Interaction #")+lexical_cast<string>(id1)+"+#"+lexical_cast<string>(id2)+" already exists.");
+	if(rb->interactions->find(Body::id_t(id1),Body::id_t(id2))!=0) throw runtime_error(string("Interaction #")+boost::lexical_cast<string>(id1)+"+#"+boost::lexical_cast<string>(id2)+" already exists.");
 	FOREACH(const shared_ptr<Engine>& e, rb->engines){
 		if(!geomMeta) { geomMeta=dynamic_cast<IGeomDispatcher*>(e.get()); if(geomMeta) continue; }
 		if(!physMeta) { physMeta=dynamic_cast<IPhysDispatcher*>(e.get()); if(physMeta) continue; }
@@ -129,8 +118,8 @@ shared_ptr<Interaction> Shop::createExplicitInteraction(Body::id_t id1, Body::id
 	if(!geomMeta) throw runtime_error("No IGeomDispatcher in engines or inside InteractionLoop.");
 	if(!physMeta) throw runtime_error("No IPhysDispatcher in engines or inside InteractionLoop.");
 	shared_ptr<Body> b1=Body::byId(id1,rb), b2=Body::byId(id2,rb);
-	if(!b1) throw runtime_error(("No body #"+lexical_cast<string>(id1)).c_str());
-	if(!b2) throw runtime_error(("No body #"+lexical_cast<string>(id2)).c_str());
+	if(!b1) throw runtime_error(("No body #"+boost::lexical_cast<string>(id1)).c_str());
+	if(!b2) throw runtime_error(("No body #"+boost::lexical_cast<string>(id2)).c_str());
 	shared_ptr<Interaction> i=geomMeta->explicitAction(b1,b2,/*force*/force);
 	assert(force && i);
 	if(!i) return i;
@@ -427,12 +416,9 @@ void Shop::calm(const shared_ptr<Scene>& _scene, int mask){
 	FOREACH(shared_ptr<Body> b, *scene->bodies){
 		if (!b || !b->isDynamic()) continue;
 		if(((mask>0) and ((b->groupMask & mask)==0))) continue;
-		Sphere* s=dynamic_cast<Sphere*>(b->shape.get());
-		if ( (s) or ( (!s) && (b->isClump()) ) ){
-			b->state->vel=Vector3r::Zero();
-			b->state->angVel=Vector3r::Zero();
-			b->state->angMom=Vector3r::Zero();
-		}
+		b->state->vel=Vector3r::Zero();
+		b->state->angVel=Vector3r::Zero();
+		b->state->angMom=Vector3r::Zero();
 	}
 }
 

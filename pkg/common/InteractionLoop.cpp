@@ -3,33 +3,24 @@
 YADE_PLUGIN((InteractionLoop));
 CREATE_LOGGER(InteractionLoop);
 
-void InteractionLoop::pyHandleCustomCtorArgs(python::tuple& t, python::dict& d){
-	if(python::len(t)==0) return; // nothing to do
-	if(python::len(t)!=3) throw invalid_argument("Exactly 3 lists of functors must be given");
+void InteractionLoop::pyHandleCustomCtorArgs(boost::python::tuple& t, boost::python::dict& d){
+	if(boost::python::len(t)==0) return; // nothing to do
+	if(boost::python::len(t)!=3) throw invalid_argument("Exactly 3 lists of functors must be given");
 	// parse custom arguments (3 lists) and do in-place modification of args
 	typedef std::vector<shared_ptr<IGeomFunctor> > vecGeom;
 	typedef std::vector<shared_ptr<IPhysFunctor> > vecPhys;
 	typedef std::vector<shared_ptr<LawFunctor> > vecLaw;
-	vecGeom vg=python::extract<vecGeom>(t[0])();
-	vecPhys vp=python::extract<vecPhys>(t[1])();
-	vecLaw vl=python::extract<vecLaw>(t[2])();
+	vecGeom vg=boost::python::extract<vecGeom>(t[0])();
+	vecPhys vp=boost::python::extract<vecPhys>(t[1])();
+	vecLaw vl=boost::python::extract<vecLaw>(t[2])();
 	FOREACH(shared_ptr<IGeomFunctor> gf, vg) this->geomDispatcher->add(gf);
 	FOREACH(shared_ptr<IPhysFunctor> pf, vp) this->physDispatcher->add(pf);
 	FOREACH(shared_ptr<LawFunctor> cf, vl) this->lawDispatcher->add(cf);
-	t=python::tuple(); // empty the args; not sure if this is OK, as there is some refcounting in raw_constructor code
+	t=boost::python::tuple(); // empty the args; not sure if this is OK, as there is some refcounting in raw_constructor code
 }
 
 
 void InteractionLoop::action(){
-// 	if(eraseIntsInLoop && scene->interactions->conditionalyEraseNonReal(scene)>0 && !alreadyWarnedNoCollider){
-// 		LOG_WARN("Interactions pending erase found (erased), no collider being used?");
-// 		alreadyWarnedNoCollider=true;
-// 	}
-	/*
-	if(scene->interactions->dirty){
-		throw std::logic_error("InteractionContainer::dirty is true; the collider should re-initialize in such case and clear the dirty flag.");
-	}
-	*/
 	// update Scene* of the dispatchers
 	geomDispatcher->scene=physDispatcher->scene=lawDispatcher->scene=scene;
 	// ask dispatchers to update Scene* of their functors
@@ -60,11 +51,9 @@ void InteractionLoop::action(){
 	// (only for some kinds of colliders; see comment for InteractionContainer::iterColliderLastRun)
 	bool removeUnseenIntrs=(scene->interactions->iterColliderLastRun>=0 && scene->interactions->iterColliderLastRun==scene->iter);
 
-
-
 	#ifdef YADE_OPENMP
 	const long size=scene->interactions->size();
-	#pragma omp parallel for schedule(guided) num_threads(ompThreads>0 ? ompThreads : omp_get_max_threads())
+	#pragma omp parallel for schedule(guided) num_threads(ompThreads>0 ? min(ompThreads,omp_get_max_threads()) : omp_get_max_threads())
 	for(long i=0; i<size; i++){
 		const shared_ptr<Interaction>& I=(*scene->interactions)[i];
 	#else
@@ -81,7 +70,9 @@ void InteractionLoop::action(){
 		const shared_ptr<Body>& b2_=Body::byId(I->getId2(),scene);
 
 		if(!b1_ || !b2_){ LOG_DEBUG("Body #"<<(b1_?I->getId2():I->getId1())<<" vanished, erasing intr #"<<I->getId1()<<"+#"<<I->getId2()<<"!"); scene->interactions->requestErase(I); continue; }
-
+    
+    // Skip interaction with clumps
+    if (b1_->isClump() || b2_->isClump()) { continue; }
 		// we know there is no geometry functor already, take the short path
 		if(!I->functorCache.geomExists) { assert(!I->isReal()); continue; }
 		// no interaction geometry for either of bodies; no interaction possible
@@ -118,7 +109,7 @@ void InteractionLoop::action(){
 			if(wasReal) scene->interactions->requestErase(I); // fully created interaction without geometry is reset and perhaps erased in the next step
 			continue; // in any case don't care about this one anymore
 		}
-
+		
 		// IPhysDispatcher
 		if(!I->functorCache.phys){
 			I->functorCache.phys=physDispatcher->getFunctor2D(b1->material,b2->material,swap);
@@ -154,15 +145,4 @@ void InteractionLoop::action(){
 			if(callbackPtrs[i]!=NULL) (*(callbackPtrs[i]))(callbacks[i].get(),I.get());
 		}
 	}
-	
-	// process eraseAfterLoop
-	#ifdef YADE_OPENMP
-		FOREACH(list<idPair>& l, eraseAfterLoopIds){
-			FOREACH(idPair p,l) scene->interactions->erase(p.first,p.second);
-			l.clear();
-		}
-	#else
-		FOREACH(idPair p, eraseAfterLoopIds) scene->interactions->erase(p.first,p.second);
-		eraseAfterLoopIds.clear();
-	#endif
 }

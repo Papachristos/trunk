@@ -11,9 +11,7 @@
 
 #include "SimpleShear.hpp"
 
-#include <yade/pkg/dem/NormalInelasticMat.hpp>
-#include<yade/pkg/dem/NormalInelasticityLaw.hpp>
-#include <yade/pkg/dem/Ip2_2xNormalInelasticMat_NormalInelasticityPhys.hpp>
+#include <yade/pkg/dem/NormalInelasticPM.hpp>
 #include<yade/pkg/dem/GlobalStiffnessTimeStepper.hpp>
 
 #include<yade/pkg/common/Aabb.hpp>
@@ -27,7 +25,7 @@
 
 #include<yade/pkg/dem/NewtonIntegrator.hpp>
 #include<yade/pkg/common/GravityEngines.hpp>
-#include<yade/pkg/dem/KinemCTDEngine.hpp>
+#include<yade/pkg/dem/KinemC__Engine.hpp>
 
 #include<yade/pkg/dem/Ig2_Sphere_Sphere_ScGeom.hpp>
 #include<yade/pkg/dem/Ig2_Box_Sphere_ScGeom.hpp>
@@ -38,10 +36,7 @@
 #include<yade/pkg/common/Box.hpp>
 #include<yade/pkg/common/Sphere.hpp>
 
-#include <boost/filesystem/convenience.hpp>
 #include <utility>
-
-using namespace std;
 
 YADE_PLUGIN((SimpleShear))
 CREATE_LOGGER(SimpleShear);
@@ -262,25 +257,25 @@ string SimpleShear::GenerateCloud(vector<BasicSphere>& sphere_list,Vector3r lowe
 		}
 		if (t==tries) 
 		{
-		string str1="Generated a sample with " + lexical_cast<string>(i) + " spheres inside box of dimensions: (" 
-			+ lexical_cast<string>(dimensions[0]) + "," 
-			+ lexical_cast<string>(dimensions[1]) + "," 
-			+ lexical_cast<string>(dimensions[2]) + ").\n";
-		return str1 + "More than " + lexical_cast<string>(tries) +	" tries while generating sphere number " +
-					lexical_cast<string>(i+1) + "/" + lexical_cast<string>(number) + ".";
+		string str1="Generated a sample with " + boost::lexical_cast<string>(i) + " spheres inside box of dimensions: (" 
+			+ boost::lexical_cast<string>(dimensions[0]) + "," 
+			+ boost::lexical_cast<string>(dimensions[1]) + "," 
+			+ boost::lexical_cast<string>(dimensions[2]) + ").\n";
+		return str1 + "More than " + boost::lexical_cast<string>(tries) +	" tries while generating sphere number " +
+					boost::lexical_cast<string>(i+1) + "/" + boost::lexical_cast<string>(number) + ".";
 		}
 	}
-	return "Generated a sample with " + lexical_cast<string>(number) + " spheres inside box of dimensions: (" 
-			+ lexical_cast<string>(dimensions[0]) + "," 
-			+ lexical_cast<string>(dimensions[1]) + "," 
-			+ lexical_cast<string>(dimensions[2]) + ").";
+	return "Generated a sample with " + boost::lexical_cast<string>(number) + " spheres inside box of dimensions: (" 
+			+ boost::lexical_cast<string>(dimensions[0]) + "," 
+			+ boost::lexical_cast<string>(dimensions[1]) + "," 
+			+ boost::lexical_cast<string>(dimensions[2]) + ").";
 }
 
 std::pair<string,bool> SimpleShear::ImportCloud(vector<BasicSphere>& sphere_list,string importFilename)
 {
 	sphere_list.clear();
 	int nombre=0;
-	if(importFilename.size() != 0 && filesystem::exists(importFilename) )
+	if(importFilename.size() != 0 && boost::filesystem::exists(importFilename) )
 	{
 		ifstream loadFile(importFilename.c_str()); // cree l'objet loadFile de la classe ifstream qui va permettre de lire ce qu'il y a dans importFilename
 
@@ -308,7 +303,7 @@ std::pair<string,bool> SimpleShear::ImportCloud(vector<BasicSphere>& sphere_list
 			sphere_list.push_back(s);
 			nombre++;
 		}		
-		return std::make_pair(std::string("Echantillon correctement genere : " + lexical_cast<string>(nombre) + " billes"),true);
+		return std::make_pair(std::string("Echantillon correctement genere : " + boost::lexical_cast<string>(nombre) + " billes"),true);
 	}
 	else
 	{

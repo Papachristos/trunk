@@ -8,14 +8,11 @@
 
 #ifdef YADE_CGAL
 
-#include<yade/lib/pyutil/numpy.hpp>
-#include<boost/python.hpp>
-#include<boost/python/object.hpp>
-#include<boost/version.hpp>
 #include<yade/pkg/dem/Shop.hpp>
 #include"TesselationWrapper.hpp"
 #include<yade/lib/triangulation/Timer.h>
 #include<yade/pkg/dem/SpherePack.hpp>
+#include<yade/lib/pyutil/numpy.hpp>
 
 YADE_PLUGIN((TesselationWrapper));
 CREATE_LOGGER(TesselationWrapper);
@@ -163,7 +160,6 @@ double TesselationWrapper::Volume(unsigned int id) {return ((unsigned int) Tes->
 
 bool TesselationWrapper::insert(double x, double y, double z, double rad, unsigned int id)
 {
-	using namespace std;
 	checkMinMax(x,y,z,rad);
 	mean_radius += rad;
 	++n_spheres;
@@ -172,7 +168,8 @@ bool TesselationWrapper::insert(double x, double y, double z, double rad, unsign
 
 void TesselationWrapper::checkMinMax(double x, double y, double z, double rad)
 {
-	using namespace std;
+	using std::min;
+	using std::max;
 	Pmin = CGT::Point(min(Pmin.x(), x-rad), min(Pmin.y(), y-rad),  min(Pmin.z(), z-rad));
 	Pmax = CGT::Point(max(Pmax.x(), x+rad),  max(Pmax.y(), y+rad),  max(Pmax.z(), z+rad));
 }
@@ -180,12 +177,11 @@ void TesselationWrapper::checkMinMax(double x, double y, double z, double rad)
 
 bool TesselationWrapper::move(double x, double y, double z, double rad, unsigned int id)
 {
-	using namespace std;
 	checkMinMax(x,y,z,rad);
 	if (Tes->move(x,y,z,rad,id)!=NULL)
 		return true;
 	else {
-		cerr << "Tes->move(x,y,z,rad,id)==NULL" << endl; return false;
+		std::cerr << "Tes->move(x,y,z,rad,id)==NULL" << std::endl; return false;
 	}
 }
 
@@ -344,7 +340,7 @@ void TesselationWrapper::defToVtk (string outputFile){
 	mma.analyser->DefToFile(outputFile.c_str());
 }
 
-python::dict TesselationWrapper::getVolPoroDef(bool deformation)
+boost::python::dict TesselationWrapper::getVolPoroDef(bool deformation)
 {
 		delete Tes;
 		CGT::TriaxialState* ts;
@@ -379,7 +375,7 @@ python::dict TesselationWrapper::getVolPoroDef(bool deformation)
 			if (deformation) MATRIX3R_TO_NUMPY(mma.analyser->ParticleDeformation[id],def[id]);
  			//cerr << V_it->info().v()<<" "<<ParticleDeformation[id]<<endl;
  		}
- 		python::dict ret;
+ 		boost::python::dict ret;
  		ret["vol"]=vol;
  		ret["poro"]=poro;
  		if (deformation) ret["def"]=def;
