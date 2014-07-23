@@ -56,7 +56,7 @@ void Law2_ScGeom_JCFpmPhys_JointedCohesiveFrictionalPM::go(shared_ptr<IGeom>& ig
 	      }
 	  }
 	  else { 
-	    D = phys->initD - abs((b1->state->pos - b2->state->pos).dot(phys->jointNormal)); 
+	    D = phys->initD - std::abs((b1->state->pos - b2->state->pos).dot(phys->jointNormal)); 
 	    }
 	} else { 
 	  D = geom->penetrationDepth - phys->initD; 
