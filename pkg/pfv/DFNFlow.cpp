@@ -219,6 +219,7 @@ void DFNFlowEngine::trickPermeability()
 			  Real aperture = (jcfpmphys->crackJointAperture + residualAperture) > 0? jcfpmphys->crackJointAperture : 1e-10 ;
 			  cout<<"crackJointperture = " << aperture <<endl; 
 			  trickPermeability(edge,aperture, residualAperture);};
+			  // TEST LUC PULL COMMIT 
 		}
 	}
 }
