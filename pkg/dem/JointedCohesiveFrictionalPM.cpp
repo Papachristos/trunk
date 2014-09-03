@@ -27,6 +27,7 @@ void Law2_ScGeom_JCFpmPhys_JointedCohesiveFrictionalPM::go(shared_ptr<IGeom>& ig
 	/// Defines the interparticular distance used for computation
 	Real D = 0;
 
+
 	/*this is for setting the equilibrium distance between all cohesive elements in the first contact detection*/
 	if ( contact->isFresh(scene) ) { 
 	  phys->normalForce = Vector3r::Zero(); 
@@ -115,7 +116,9 @@ void Law2_ScGeom_JCFpmPhys_JointedCohesiveFrictionalPM::go(shared_ptr<IGeom>& ig
 	    }
 	    return;
 	  }
-	}	  
+	}
+// 	phys->crackJointAperture = D;
+	phys->crackJointAperture = -D;
 	
 	/* NormalForce */
 	Real Fn = 0;

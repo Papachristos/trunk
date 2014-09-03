@@ -9,6 +9,7 @@
 #ifdef FLOW_ENGINE
 
 #include<yade/pkg/dem/JointedCohesiveFrictionalPM.hpp>
+// #include<yade/pkg/dem/ScGeom.hpp>
 
 //keep this #ifdef for commited versions unless you really have stable version that should be compiled by default
 //it will save compilation time for everyone else
@@ -200,6 +201,8 @@ void DFNFlowEngine::trickPermeability()
 	//in the end this function should have a loop on all edges I guess
 	const JCFpmPhys* jcfpmphys;
 	const shared_ptr<InteractionContainer> interactions = scene->interactions;
+// 	const shared_ptr<IGeom>& ig;
+// 	const ScGeom* geom; // = static_cast<ScGeom*>(ig.get());
 	FiniteEdgesIterator edge = Tri.finite_edges_begin();
 	for( ; edge!= Tri.finite_edges_end(); ++edge) {
 		const VertexInfo& vi1=(edge->first)->vertex(edge->second)->info();
@@ -207,7 +210,15 @@ void DFNFlowEngine::trickPermeability()
 		const shared_ptr<Interaction>& interaction=interactions->find( vi1.id(),vi2.id() );
 		if (interaction && interaction->isReal()) {
 			jcfpmphys = YADE_CAST<JCFpmPhys*>(interaction->phys.get());
-			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {Real aperture=jcfpmphys->dilation; Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0; trickPermeability(edge,aperture, residualAperture);};
+// 			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {Real aperture=jcfpmphys->dilation; Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0; trickPermeability(edge,aperture, residualAperture);};
+// 			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {Real aperture=(geom->penetrationDepth - jcfpmphys->initD); Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0; trickPermeability(edge,aperture, residualAperture);};
+			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {
+			  Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0;
+// 			  Real aperture = jcfpmphys->crackJointAperture;
+// 			  Real aperture = jcfpmphys->crackJointAperture > 0? jcfpmphys->crackJointAperture : 0.0000000001;
+			  Real aperture = (jcfpmphys->crackJointAperture + residualAperture) > 0? jcfpmphys->crackJointAperture : 1e-10 ;
+			  cout<<"crackJointperture = " << aperture <<endl; 
+			  trickPermeability(edge,aperture, residualAperture);};
 		}
 	}
 }
