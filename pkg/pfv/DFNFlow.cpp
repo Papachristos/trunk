@@ -136,14 +136,18 @@ class DFNFlowEngine : public DFNFlowEngineT
 	void trickPermeability (RTriangulation::Facet_circulator& facet,Real aperture, Real residualAperture);
 	void trickPermeability (RTriangulation::Finite_edges_iterator& edge,Real aperture, Real residualAperture);
 	void setPositionsBuffer(bool current);
+// 	void computeTotalFractureArea(Real totalFracureArea,bool printFractureTotalArea);/// Trying to get fracture's surface
+	Real totalFracureArea; /// Trying to get fracture's surface
 
 	YADE_CLASS_BASE_DOC_ATTRS_INIT_CTOR_PY(DFNFlowEngine,DFNFlowEngineT,"This is an enhancement of the FlowEngine for intact and fractured rocks that takes into acount pre-existing discontinuities and bond breakage between particles. The local conductivity around the broken link is calculated according to parallel plates model",
 	((Real, myNewAttribute, 0,,"useless example, Input values to be implemented: newCrackResidualPermeability, jointResidualPermeability, crackOpeningFactor"))
 	((bool, updatePositions, false,,"update particles positions when rebuilding the mesh (experimental)"))
 	((Real, jointResidual, 0,,"Calibration parameter for residual aperture of joints"))
+ 	((bool, printFractureTotalArea, 0,,"The final fracture area computed through the network")) /// Trying to get fracture's surface
 	,
 	,
 	,
+// 	.def("computeTotalFractureArea",&DFNFlowEngineT::computeTotalFractureArea," Compute and print the total fracture area of the network") /// Trying to get fracture's surface
 // 	.def("trickPermeability",&DFNFlowEngineT::trickPermeability,"measure the mean trickPermeability in the period")
 	)
 	DECLARE_LOGGER;
@@ -170,18 +174,25 @@ void DFNFlowEngine::setPositionsBuffer(bool current)
 	}
 }
 
-
 void DFNFlowEngine::trickPermeability (RTriangulation::Facet_circulator& facet, Real aperture, Real residualAperture)
 {
 	const RTriangulation& Tri = solver->T[solver->currentTes].Triangulation();
 	const CellHandle& cell1 = facet->first;
 	const CellHandle& cell2 = facet->first->neighbor(facet->second);
 	if ( Tri.is_infinite(cell1) || Tri.is_infinite(cell2)) cerr<<"Infinite cell found in trickPermeability, should be handled somehow, maybe"<<endl;
-	cell1->info().kNorm()[facet->second] = pow((aperture+residualAperture),3) / (12 * viscosity);
+	cell1->info().kNorm()[facet->second] =pow((aperture+residualAperture),3) / (12 * viscosity);
 	cell2->info().kNorm()[Tri.mirror_index(cell1, facet->second)] =pow((aperture+residualAperture),3) / (12 * viscosity);
 	//For vtk recorder:
 	cell1->info().crack= 1;
 	cell2->info().crack= 1;
+	Point& CellCentre1 = cell1->info(); /// Trying to get fracture's surface 
+	Point& CellCentre2 = cell2->info(); /// Trying to get fracture's surface 
+	CVector networkFractureLength = CellCentre1 - CellCentre2; /// Trying to get fracture's surface 
+	double networkFractureDistance = sqrt(networkFractureLength.squared_length()); /// Trying to get fracture's surface 
+	Real networkFractureArea = pow(networkFractureDistance,2);  /// Trying to get fracture's surface 
+	totalFracureArea += networkFractureArea; /// Trying to get fracture's surface 
+// 	cout <<" ------------------ The total surface area up to here is --------------------" << totalFracureArea << endl;
+// 	printFractureTotalArea = totalFracureArea; /// Trying to get fracture's surface 
 }
 
 void DFNFlowEngine::trickPermeability(RTriangulation::Finite_edges_iterator& edge, Real aperture, Real residualAperture)
@@ -201,6 +212,10 @@ void DFNFlowEngine::trickPermeability()
 	//in the end this function should have a loop on all edges I guess
 	const JCFpmPhys* jcfpmphys;
 	const shared_ptr<InteractionContainer> interactions = scene->interactions;
+	int numberOfCrackedOrJoinedInteractions = 0; /// DEBUG
+	Real SumOfApertures = 0.; /// DEBUG
+	Real AverageAperture =0; /// DEBUG
+	Real totalFracureArea=0; /// Trying to get fracture's surface
 // 	const shared_ptr<IGeom>& ig;
 // 	const ScGeom* geom; // = static_cast<ScGeom*>(ig.get());
 	FiniteEdgesIterator edge = Tri.finite_edges_begin();
@@ -208,22 +223,34 @@ void DFNFlowEngine::trickPermeability()
 		const VertexInfo& vi1=(edge->first)->vertex(edge->second)->info();
 		const VertexInfo& vi2=(edge->first)->vertex(edge->third)->info();
 		const shared_ptr<Interaction>& interaction=interactions->find( vi1.id(),vi2.id() );
-		if (interaction && interaction->isReal()) {
+		if (interaction && interaction->isReal()) {  
+			numberOfCrackedOrJoinedInteractions +=1; /// DEBUG
+			
 			jcfpmphys = YADE_CAST<JCFpmPhys*>(interaction->phys.get());
 // 			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {Real aperture=jcfpmphys->dilation; Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0; trickPermeability(edge,aperture, residualAperture);};
 // 			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {Real aperture=(geom->penetrationDepth - jcfpmphys->initD); Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0; trickPermeability(edge,aperture, residualAperture);};
 			if ( (jcfpmphys->interactionIsCracked || jcfpmphys->isOnJoint) ) {
-			  Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 0;
+			  Real residualAperture = jcfpmphys->isOnJoint? jointResidual : 1e-5;
 // 			  Real aperture = jcfpmphys->crackJointAperture;
 // 			  Real aperture = jcfpmphys->crackJointAperture > 0? jcfpmphys->crackJointAperture : 0.0000000001;
-			  Real aperture = (jcfpmphys->crackJointAperture + residualAperture) > 0? jcfpmphys->crackJointAperture : 1e-10 ;
-			  cout<<"crackJointperture = " << aperture <<endl; 
+			  Real aperture = (jcfpmphys->crackJointAperture + residualAperture) > 1e-4? jcfpmphys->crackJointAperture : 1e-4 ;
+			  cout<<"crackJointperture = " << aperture <<endl;
+			  cout<<"initial Aperture = " << residualAperture <<endl;
+			  SumOfApertures += aperture; /// DEBUG
 			  trickPermeability(edge,aperture, residualAperture);};
 			  // TEST LUC PULL COMMIT 
 		}
 	}
+	AverageAperture = SumOfApertures/numberOfCrackedOrJoinedInteractions; /// DEBUG
+	cout << " Average aperture in joint ( -D ) = " << AverageAperture << endl; /// DEBUG
 }
 
+// Real DFNFlowEngine::computeTotalFractureArea(totalFracureArea,printFractureTotalArea) /// Trying to get fracture's surface
+// {
+// 	 if (printFractureTotalArea >0) {
+// 		cout<< " The total fracture area computed from the Network is: " << totalFracureArea <<endl;
+// 	 }
+// }
 
 #endif //DFNFLOW
 #endif //FLOWENGINE
